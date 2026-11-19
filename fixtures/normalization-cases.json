@@ -1,0 +1,63 @@
+{
+  "$comment": "TEST FIXTURE — not content. Shared vectors for the Arabic normalizer and light stemmer (SPEC §9). Both packages/shared (TypeScript) and pipeline/normalize (Python) must pass every case. Strings use \\u escapes where a character is invisible or easily confused.",
+  "version": 1,
+  "normalize": [
+    { "note": "full tashkeel removed", "input": "إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ", "expected": "انما الاعمال بالنيات" },
+    { "note": "no tashkeel is unchanged apart from hamza folding", "input": "إنما الأعمال بالنيات", "expected": "انما الاعمال بالنيات" },
+    { "note": "already normalized is idempotent", "input": "انما الاعمال بالنيات", "expected": "انما الاعمال بالنيات" },
+    { "note": "ligature \uFDFA expands through NFKC, then ى folds to ي", "input": "رسول الله \uFDFA", "expected": "رسول الله صلي الله عليه وسلم" },
+    { "note": "alef variants أ إ آ ٱ fold to ا", "input": "أحمد إبراهيم آمين ٱلله", "expected": "احمد ابراهيم امين الله" },
+    { "note": "alef maqsura folds to ya", "input": "موسى عيسى", "expected": "موسي عيسي" },
+    { "note": "taa marbuta folds to ha", "input": "الصلاة", "expected": "الصلاه" },
+    { "note": "hamza on waw and on ya", "input": "مؤمن سائل", "expected": "مومن سايل" },
+    { "note": "Persian kaf and ya", "input": "\u06A9تاب \u06CCحيى", "expected": "كتاب يحيي" },
+    { "note": "tatweel removed", "input": "الله\u0640\u0640\u0640 أك\u0640\u0640\u0640بر", "expected": "الله اكبر" },
+    { "note": "superscript alef U+0670 removed", "input": "الرَّحْمٰنِ", "expected": "الرحمن" },
+    { "note": "Quranic annotation marks U+06D6–U+06ED removed", "input": "رَيْبَ \u06DB فِيهِ\u06DA", "expected": "ريب فيه" },
+    { "note": "Arabic-Indic digits", "input": "حديث ١٢٣٤", "expected": "حديث 1234" },
+    { "note": "Extended Arabic-Indic digits", "input": "۷۵۶۳", "expected": "7563" },
+    { "note": "Arabic punctuation and guillemets become spaces", "input": "قال، «حدثنا»؛ أليس كذلك؟", "expected": "قال حدثنا اليس كذلك" },
+    { "note": "Latin punctuation and runs of whitespace collapse", "input": "  عن   مالك,\t(عن) نافع.\n", "expected": "عن مالك عن نافع" },
+    { "note": "bidi and zero-width format characters removed", "input": "\u200Fحدثنا\u200C الحميدي\u200E", "expected": "حدثنا الحميدي" },
+    { "note": "decomposed alef + hamza above composes under NFKC before marks are stripped", "input": "أخبرني", "expected": "اخبرني" },
+    { "note": "empty input", "input": "", "expected": "" },
+    { "note": "punctuation only", "input": "«،»", "expected": "" }
+  ],
+  "stem": [
+    { "note": "SPEC §9 example", "input": "بالنيات", "expected": "نيات" },
+    { "note": "SPEC §9 example", "input": "الاعمال", "expected": "اعمال" },
+    { "note": "SPEC §9 example: وال would leave 2 letters, so fall back to و", "input": "والله", "expected": "الله" },
+    { "note": "SPEC §9 example: no proclitic", "input": "كتاب", "expected": "كتاب" },
+    { "note": "protected word", "input": "الله", "expected": "الله" },
+    { "note": "protected word (ال would otherwise leave لهم)", "input": "اللهم", "expected": "اللهم" },
+    { "note": "كال", "input": "كالبنيان", "expected": "بنيان" },
+    { "note": "فال", "input": "فالصلاه", "expected": "صلاه" },
+    { "note": "لل", "input": "للصلاه", "expected": "صلاه" },
+    { "note": "و alone", "input": "وقال", "expected": "قال" },
+    { "note": "و would leave 2 letters: unchanged", "input": "ولد", "expected": "ولد" },
+    { "note": "ال would leave 2 letters: unchanged", "input": "الم", "expected": "الم" },
+    { "note": "exactly 3 letters remain: strip", "input": "البيت", "expected": "بيت" },
+    { "note": "no suffix stripping in release 1", "input": "المسلمون", "expected": "مسلمون" },
+    { "note": "digits are untouched", "input": "1234", "expected": "1234" }
+  ],
+  "analyze": [
+    {
+      "note": "Bukhari no. 1 matn opening, as a query with full tashkeel",
+      "input": "إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ",
+      "surface": ["انما", "الاعمال", "بالنيات"],
+      "stem": ["انما", "اعمال", "نيات"]
+    },
+    {
+      "note": "mixed punctuation and the ligature",
+      "input": "سَمِعْتُ رَسُولَ اللَّهِ \uFDFA، يَقُولُ",
+      "surface": ["سمعت", "رسول", "الله", "صلي", "الله", "عليه", "وسلم", "يقول"],
+      "stem": ["سمعت", "رسول", "الله", "صلي", "الله", "عليه", "سلم", "يقول"]
+    },
+    {
+      "note": "empty",
+      "input": "  ",
+      "surface": [],
+      "stem": []
+    }
+  ]
+}
