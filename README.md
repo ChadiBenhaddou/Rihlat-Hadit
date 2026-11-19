@@ -2,7 +2,7 @@
 
 A research platform that turns each isnad of Sahih al-Bukhari into an animated, explorable, fully sourced graph. The specification is [`SPEC.md`](SPEC.md), and it overrides everything here.
 
-**Status:** Phase 0 (foundations). No hadith data is loaded.
+**Status:** Phases 0–3 done and Phase 4 mostly done, all locally (see SPEC §18). Sahih al-Bukhari is loaded from the approved sources in `docs/data-sources.md`.
 
 ## Layout
 
@@ -19,6 +19,24 @@ A research platform that turns each isnad of Sahih al-Bukhari into an animated, 
 ## Requirements
 
 Node 22.22+ (24 in CI), pnpm 12 (`packageManager` pins it), Python 3.12+ with [uv](https://docs.astral.sh/uv/).
+
+## Running it locally
+
+```sh
+pnpm install
+cp apps/web/.dev.vars.example apps/web/.dev.vars    # Turnstile test keys and a dev-only admin login
+cd pipeline && uv sync && uv run python build.py && cd ..   # needs the raw sources in data/raw (see docs/data-sources.md)
+scripts/load-local.sh                                # loads the build into local D1 (local only)
+pnpm --filter @isnad/web dev                         # http://localhost:5173, English at /en
+```
+
+Editorial tools are at `/admin`. Locally, `DEV_ADMIN_EMAIL` from `.dev.vars` signs you in. Add that email to the `staff` table once:
+
+```sh
+cd apps/web && pnpm exec wrangler d1 execute DB --local --command "INSERT OR REPLACE INTO staff VALUES ('admin@localhost', 'admin')"
+```
+
+In production, `/admin` sits behind Cloudflare Access, and the Worker verifies the Access JWT itself. The dev login is compiled out of production builds.
 
 ## Common tasks
 
