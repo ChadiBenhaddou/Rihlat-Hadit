@@ -16,3 +16,4 @@ append-only: supersede a record with a new one rather than rewriting it.
 | [0009](0009-strict-csp-with-nonces.md) | Strict CSP with per-request nonces | Accepted |
 | [0010](0010-ci-github-actions.md) | CI on GitHub Actions with Wrangler previews | Proposed |
 | [0011](0011-reference-numbering-and-kg-placeholders.md) | Reference numbering by alignment; dataset placeholders become link kinds | Accepted |
+| [0012](0012-loaders-instead-of-tanstack-query.md) | React Router loaders instead of TanStack Query and Zustand | Accepted |
