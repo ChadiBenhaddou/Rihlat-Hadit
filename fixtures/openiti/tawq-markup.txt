@@ -1,0 +1,30 @@
+######OpenITI#
+#META# TEST FIXTURE — synthetic markup exercising the Tawq al-Najat quirks. Text is placeholder, not content.
+#META#Header#End#
+# PageV00P000
+### | [مقدمة]
+# نص المقدمة
+### | 1 - 
+# باب
+### | بدء الوحي
+### | باب الأول
+### | 1 - 
+# نص أ PageV01P001
+~~تتمة أ
+### | [ص: 2]
+# بقية أ
+### | 2 ms0001 - 
+# نص ب
+### $ 2 - كتاب الثاني
+### | باب الثاني
+### | 3 -
+# 4 -
+# 5 -
+# نص مشترك
+### $ 3 -
+# كتاب الثالث
+### | 6 - 
+# نص قبل أول باب
+### | باب الثالث
+### | 7 - 
+# نص د
