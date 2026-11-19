@@ -84,6 +84,13 @@ _TASHKEEL = re.compile(r"[\u064B-\u065F\u0670\u0640]")
 _WORD = re.compile(r"[ء-يٱ-ۓ\u064B-\u065F\u0670\u0640]+")
 
 
+def _known(key: str) -> bool:
+    """A transmission phrase, including its و-prefixed form («وحدثنا» after ح)."""
+    if key in TERMS or key in SUSPENSION:
+        return True
+    return key.startswith("و") and key[1:] in TERMS
+
+
 @dataclass(frozen=True)
 class Phrase:
     """A transmission phrase as written (tashkeel removed) and its last normalized token."""
@@ -98,7 +105,7 @@ def phrase_before(gap: str) -> Phrase | None:
     if not words:
         return None
     keys = [normalize(w) for w in words]
-    if keys[-1] not in TERMS and keys[-1] not in SUSPENSION:
+    if not _known(keys[-1]):
         return None
     start = len(words) - 1
     if start > 0 and keys[start - 1] in _PARTICLES and keys[start] not in _PARTICLES:
