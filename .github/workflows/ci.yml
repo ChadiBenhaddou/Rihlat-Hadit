@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm --filter @isnad/web build
+
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+
+  source-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No invisible characters in normalizer sources and vectors
+        run: |
+          python3 -I scripts/escape-invisible.py --check --code packages/shared/src/arabic.ts pipeline/normalize/__init__.py
+          python3 -I scripts/escape-invisible.py --check fixtures/normalization-cases.json pipeline/tests/test_normalize.py
+
+  # Every pull request gets a preview deployment backed by the preview-only
+  # D1, KV and R2 (SPEC §17). Skipped until the repository has the secrets.
+  preview:
+    if: github.event_name == 'pull_request'
+    needs: [typescript, python]
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: pnpm/action-setup@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: actions/setup-node@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - name: Apply preview migrations
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: apps/web
+        run: pnpm db:migrate:preview
+      - name: Build and upload preview version
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: apps/web
+        run: |
+          CLOUDFLARE_ENV=preview pnpm build
+          pnpm exec wrangler versions upload --preview-alias pr-${{ github.event.number }}
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [typescript, python, source-hygiene]
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: pnpm/action-setup@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: actions/setup-node@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - name: Apply migrations, then deploy (migrations are forward-only and expand-first)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: apps/web
+        run: |
+          pnpm exec wrangler d1 migrations apply DB --remote
+          pnpm exec wrangler d1 migrations apply SEARCH_DB --remote
+          pnpm build
+          pnpm exec wrangler deploy
