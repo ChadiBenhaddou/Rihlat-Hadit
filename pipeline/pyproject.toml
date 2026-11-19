@@ -33,4 +33,6 @@ packages = ["normalize", "adapters", "isnad", "resolve"]
 
 [tool.ruff.lint.per-file-ignores]
 # One-off evaluation scripts whose output is recorded in docs/data-sources.md.
+# The build orchestrator holds long SQL statements.
+"build.py" = ["E501"]
 "evaluate/*" = ["E501", "E701", "E702", "E741", "B905", "RUF005"]

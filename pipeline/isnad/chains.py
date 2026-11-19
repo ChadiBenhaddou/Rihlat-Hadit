@@ -35,6 +35,18 @@ class Link:
     mention_end: int | None
     term_ar: str | None
     link_kind: str  # connected | suspended | gap | uncertain
+    resolution: str = "dataset"  # dataset | auto | manual | unresolved
+
+
+@dataclass(frozen=True)
+class Placeholders:
+    """Dataset ids that mark a property of the chain rather than a person."""
+
+    link_kind: dict[int, str]  # placeholder id → kind given to the NEXT real link
+    unnamed: frozenset[int]  # an unnamed narrator («رجل»): kept as an unresolved node
+
+
+NO_PLACEHOLDERS = Placeholders({}, frozenset())
 
 
 @dataclass
@@ -53,6 +65,7 @@ def build_route(
     compiler_id: int,
     prophet_id: int,
     marfu: bool,
+    placeholders: Placeholders = NO_PLACEHOLDERS,
 ) -> Route:
     warnings: list[str] = []
     ids = list(chain)
@@ -62,17 +75,35 @@ def build_route(
 
     links = [Link(0, compiler_id, None, None, None, None, "connected")]
     cursor = -1  # index into mentions of the previous link's mention
-    for pos, nid in enumerate(ids[1:], start=1):
+    pending: str | None = None  # kind set by a placeholder for the next real link
+    for nid in ids[1:]:
+        if nid in placeholders.link_kind:
+            pending = placeholders.link_kind[nid]
+            continue
+        pos = len(links)
+        # Forward first (routes walk the text in order); otherwise the nearest earlier
+        # mention, which is how a later route reuses names already given («تابعه …»).
         found = next((i for i in range(cursor + 1, len(mentions)) if mentions[i].narrator_id == nid), None)
         if found is None:
+            found = next(
+                (i for i in range(min(cursor, len(mentions) - 1), -1, -1) if mentions[i].narrator_id == nid), None
+            )
+        unnamed = nid in placeholders.unnamed
+        out_id = None if unnamed else nid
+        resolution = "unresolved" if unnamed else "dataset"
+        if found is None:
             warnings.append(f"position {pos}: narrator {nid} has no mention in the text")
-            links.append(Link(pos, nid, None, None, None, None, "connected"))
+            links.append(Link(pos, out_id, None, None, None, None, pending or "connected", resolution))
+            pending = None
             continue
         m = mentions[found]
         gap_start = mentions[found - 1].end if found > 0 else 0
         phrase = phrase_before(text[gap_start : m.start])
-        kind = "suspended" if pos == 1 and is_suspension(phrase) else "connected"
-        links.append(Link(pos, nid, text[m.start : m.end], m.start, m.end, phrase.text if phrase else None, kind))
+        kind = pending or ("suspended" if pos == 1 and is_suspension(phrase) else "connected")
+        links.append(
+            Link(pos, out_id, text[m.start : m.end], m.start, m.end, phrase.text if phrase else None, kind, resolution)
+        )
+        pending = None
         cursor = found
 
     ends_with_prophet = False
@@ -90,7 +121,8 @@ def build_route(
                         span[0],
                         span[1],
                         phrase.text if phrase else None,
-                        "connected",
+                        pending or "connected",  # «موضع إرسال» before the Prophet: a gap
+                        "auto",
                     )
                 )
                 ends_with_prophet = True
