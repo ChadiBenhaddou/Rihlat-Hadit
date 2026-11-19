@@ -1,0 +1,140 @@
+@import 'tailwindcss' source('.');
+
+/* Self-hosted fonts, Arabic subsets only (SPEC §11). All SIL Open Font License. */
+@import '@fontsource/amiri/arabic-400.css';
+@import '@fontsource/amiri/arabic-700.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
+@import '@fontsource/ibm-plex-sans-arabic/latin-400.css';
+
+/*
+ * Design tokens. Light is the default; dark follows the OS unless
+ * <html data-theme> overrides it. test/tokens.test.ts checks WCAG AA contrast
+ * for every text/line pair below — keep the block format it parses.
+ */
+:root {
+  --color-bg: #faf8f3;
+  --color-surface: #ffffff;
+  --color-ink: #1d1b16;
+  --color-ink-muted: #5b564b;
+  --color-line: #8a8373;
+  --color-hairline: #e2ddd1;
+  --color-accent: #1d5c57;
+  --color-focus: #1d5c57;
+  /* Sequential ramp for generation (tabaqa), earliest → latest. Line style, never colour alone, encodes link kind. */
+  --tabaqa-1: #1d5c57;
+  --tabaqa-2: #2f6b5a;
+  --tabaqa-3: #45795b;
+  --tabaqa-4: #5e865a;
+  --tabaqa-5: #7a8f57;
+  --tabaqa-6: #8f8a4e;
+  --tabaqa-7: #9a7d47;
+  --tabaqa-8: #9c6f45;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #14130f;
+    --color-surface: #1d1c17;
+    --color-ink: #ece7da;
+    --color-ink-muted: #a8a192;
+    --color-line: #7d776a;
+    --color-hairline: #34312a;
+    --color-accent: #7fbfb8;
+    --color-focus: #7fbfb8;
+    --tabaqa-1: #7fbfb8;
+    --tabaqa-2: #8cc0a6;
+    --tabaqa-3: #9cc195;
+    --tabaqa-4: #afc086;
+    --tabaqa-5: #c2bc7b;
+    --tabaqa-6: #d0b376;
+    --tabaqa-7: #d8a876;
+    --tabaqa-8: #dc9d7a;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #14130f;
+  --color-surface: #1d1c17;
+  --color-ink: #ece7da;
+  --color-ink-muted: #a8a192;
+  --color-line: #7d776a;
+  --color-hairline: #34312a;
+  --color-accent: #7fbfb8;
+  --color-focus: #7fbfb8;
+  --tabaqa-1: #7fbfb8;
+  --tabaqa-2: #8cc0a6;
+  --tabaqa-3: #9cc195;
+  --tabaqa-4: #afc086;
+  --tabaqa-5: #c2bc7b;
+  --tabaqa-6: #d0b376;
+  --tabaqa-7: #d8a876;
+  --tabaqa-8: #dc9d7a;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-line: var(--color-line);
+  --color-hairline: var(--color-hairline);
+  --color-accent: var(--color-accent);
+  --font-ui: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-hadith: 'Amiri', 'Scheherazade New', serif;
+}
+
+html {
+  color-scheme: light dark;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  min-height: 100dvh;
+}
+
+/* Hadith text: 22–26 px, line height ≥ 1.9 so tashkeel never collides. */
+.hadith-text {
+  font-family: var(--font-hadith);
+  font-size: clamp(1.375rem, 1.2rem + 0.5vw, 1.625rem);
+  line-height: 2;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: 1rem;
+  top: -3rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  z-index: 50;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

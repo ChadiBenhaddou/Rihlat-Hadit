@@ -1,0 +1,61 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "isnad-journey",
+  "main": "./workers/app.ts",
+  // Kept from the React Router scaffold; bump deliberately (docs/adr/0002).
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "upload_source_maps": true,
+  // Cap runaway requests well below the 5-minute maximum (SPEC §4, §17).
+  "limits": { "cpu_ms": 5000 },
+  // Phase 0 bindings. MATN_INDEX (Vectorize), AI and the rate limiters are
+  // added in the phase that first uses them (docs/adr/0008).
+  // database_id / id values are placeholders until `wrangler d1 create` /
+  // `wrangler kv namespace create` are run against the real account.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "isnad-core",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations"
+    },
+    {
+      "binding": "SEARCH_DB",
+      "database_name": "isnad-search",
+      "database_id": "00000000-0000-0000-0000-000000000002",
+      "migrations_dir": "migrations-search"
+    }
+  ],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000003" }],
+  "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data" }],
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
+    "SITE_URL": "http://localhost:5173"
+  },
+  "env": {
+    "preview": {
+      "name": "isnad-journey-preview",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "isnad-core-preview",
+          "database_id": "00000000-0000-0000-0000-000000000011",
+          "migrations_dir": "migrations"
+        },
+        {
+          "binding": "SEARCH_DB",
+          "database_name": "isnad-search-preview",
+          "database_id": "00000000-0000-0000-0000-000000000012",
+          "migrations_dir": "migrations-search"
+        }
+      ],
+      "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000013" }],
+      "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data-preview" }],
+      "vars": {
+        "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
+        "SITE_URL": "<https://preview…>"
+      }
+    }
+  }
+}
