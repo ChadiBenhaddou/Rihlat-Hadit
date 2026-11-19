@@ -4,7 +4,7 @@
  * lives in the query string: ?route=&mode=journey&dir=trace&step=&node=
  */
 import * as Dialog from '@radix-ui/react-dialog';
-import type { IsnadGraph } from '@isnad/shared';
+import type { IsnadGraph, SourceInfo } from '@isnad/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Cite } from '~/components/Cite';
@@ -12,20 +12,25 @@ import { HadithText } from '~/components/HadithText';
 import { NarratorCard } from '~/components/NarratorCard';
 import { ReportButton } from '~/components/ReportButton';
 import { ReviewBadge } from '~/components/ReviewBadge';
-import { IsnadGraphView, labelOf, type GraphFocus } from '~/graph/IsnadGraphView';
+import { bukhariTeacher, depthFromSource, divergencePoints, filterRoutes, routeLength } from '@isnad/graph';
+import { IsnadGraphView, labelOf, type GraphFocus, type LayoutMode } from '~/graph/IsnadGraphView';
 import { journeyOrder, readJourney, STEP_MS, type JourneyState } from '~/graph/journey';
 import { dataContext, notFound } from '~/lib/data.server';
 import { TERMINUS_AR } from '~/lib/format';
+import { getGroupGraph } from '../../server/data/graph';
 import { getHadith } from '../../server/data/hadith';
 import type { Route } from './+types/hadith';
 
-export async function loader({ params, context }: Route.LoaderArgs) {
+export async function loader({ params, context, request }: Route.LoaderArgs) {
   const n = Number(params.number);
   if (!Number.isInteger(n) || n < 1 || n > 99999) notFound();
   const { db, dataVersion } = await dataContext(context);
   const hadith = await getHadith(db, 'bukhari', n, dataVersion);
   if (!hadith) notFound('هذا الرقم غير موجود في البيانات المحمّلة');
-  return { hadith };
+  // All routes (SPEC §12 ج): the merged graph of every entry in this hadith's group, one more batch.
+  const wantAll = new URL(request.url).searchParams.get('view') === 'all';
+  const group = wantAll && hadith.groupId != null ? await getGroupGraph(db, hadith.groupId, dataVersion) : null;
+  return { hadith, group };
 }
 
 const TASHKEEL = /[\u064B-\u0652\u0670]/g;
@@ -72,14 +77,32 @@ function edgeKey(order: string[], i: number, dir: JourneyState['dir']): string {
 }
 
 export default function HadithPage({ loaderData }: Route.ComponentProps) {
-  const { hadith } = loaderData;
-  const g: IsnadGraph = hadith.graph;
+  const { hadith, group } = loaderData;
   const [params, setParams] = useSearchParams();
+  const allView = params.get('view') === 'all' && group != null;
+  const layoutMode: LayoutMode = params.get('layout') === 'timeline' ? 'timeline' : 'layered';
+  const baseGraph: IsnadGraph = allView ? group.graph : hadith.graph;
+  const teacherFilter = params.get('t');
+  const maxLen = Number(params.get('len')) || 0;
+  const onlyConnected = params.get('hu') === '1';
+  const g: IsnadGraph = useMemo(() => {
+    if (!allView) return baseGraph;
+    const broken = new Set(baseGraph.edges.filter((e) => e.kind !== 'connected').flatMap((e) => e.chainIds));
+    return filterRoutes(
+      baseGraph,
+      (c) =>
+        (!teacherFilter || bukhariTeacher(c) === teacherFilter) &&
+        (!maxLen || routeLength(baseGraph, c) <= maxLen) &&
+        (!onlyConnected || !broken.has(c.id)),
+    );
+  }, [allView, baseGraph, teacherFilter, maxLen, onlyConnected]);
   const reducedMotion = useReducedMotion();
   const isDesktop = useIsDesktop();
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
-  const journey = readJourney(params, g);
+  const journeyRaw = readJourney(params, g);
+  // The journey follows one entry's route; the all-routes view is explored, not played.
+  const journey = { ...journeyRaw, active: journeyRaw.active && !allView };
   const order = useMemo(() => journeyOrder(g, journey), [g, journey.routeId, journey.dir]);
   const lastStep = Math.max(0, order.length - 1);
   const step = Math.min(journey.step, lastStep);
@@ -164,9 +187,46 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
     };
   }, [journey.active, journey.dir, order, step]);
 
-  const madar = g.indicators.find((i) => i.key === 'common_link')?.nodeIds ?? [];
+  const madar = baseGraph.indicators.find((i) => i.key === 'common_link')?.nodeIds ?? [];
+  const divergence = useMemo(() => (allView ? divergencePoints(g) : []), [allView, g]);
+  const routeHue = useMemo(
+    () => new Map(baseGraph.chains.map((c, i) => [c.id, `var(--route-${(i % 8) + 1})`])),
+    [baseGraph],
+  );
+  // A link used by one route carries that route's hue; shared trunks stay neutral, so convergence shows.
+  const edgeColor = useCallback(
+    (key: string) => {
+      if (!allView) return undefined;
+      const e = g.edges.find((x) => `${x.from}>${x.to}` === key);
+      return e && e.chainIds.length === 1 ? routeHue.get(e.chainIds[0]!) : undefined;
+    },
+    [allView, g, routeHue],
+  );
+  const growDelay = useMemo(
+    () => (allView ? new Map([...depthFromSource(g)].map(([id, d]) => [id, d * 220])) : undefined),
+    [allView, g],
+  );
+  const selectedEdge = allView ? params.get('edge') : null;
+  const edgeEntries = selectedEdge
+    ? [
+        ...new Set(
+          (g.edges.find((e) => `${e.from}>${e.to}` === selectedEdge)?.chainIds ?? []).map(
+            (id) => g.chains.find((c) => c.id === id)!.hadithNumber,
+          ),
+        ),
+      ].sort((a, b) => a - b)
+    : [];
+  const teachers = useMemo(
+    () =>
+      [...new Set(baseGraph.chains.map((c) => bukhariTeacher(c)).filter((x): x is string => Boolean(x)))].map((id) => ({
+        id,
+        name: baseGraph.nodes.find((n) => n.id === id)?.nameAr ?? id,
+      })),
+    [baseGraph],
+  );
+  const groupEntries = [...new Set(baseGraph.chains.map((c) => c.hadithNumber))].sort((a, b) => a - b);
   const textSource = hadith.sources.find((s) =>
-    g.citations.some((c) => c.id === hadith.citationId && c.sourceSlug === s.slug),
+    hadith.graph.citations.some((c) => c.id === hadith.citationId && c.sourceSlug === s.slug),
   );
   const announce = journey.active ? stepText(order, step, journey.dir, nodeById, edgeByKey) : '';
   const done = journey.active && step >= lastStep && order.length > 0;
@@ -241,100 +301,202 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
             <p className="p-4 text-ink-muted">لم يُستخرج إسناد هذا الموضع بعد؛ نصه معروض كما في مصدره.</p>
           ) : (
             <>
-              <div className="journey-controls">
-                {!journey.active ? (
-                  <button className="btn-primary" onClick={() => update({ mode: 'journey', step: '0', node: null })}>
-                    استكشاف الإسناد
-                  </button>
-                ) : (
-                  <>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                {hadith.groupId != null && (
+                  <div
+                    className="inline-flex rounded-md border border-hairline"
+                    role="radiogroup"
+                    aria-label="نطاق العرض"
+                  >
                     <button
-                      className="btn"
-                      onClick={() => setPlaying((p) => !p)}
-                      disabled={reducedMotion}
-                      aria-pressed={playing}
+                      role="radio"
+                      aria-checked={!allView}
+                      className={`seg${!allView ? ' seg-on' : ''}`}
+                      onClick={() => update({ view: null, edge: null, t: null, len: null, hu: null })}
                     >
-                      {playing ? 'إيقاف' : 'تشغيل'}
+                      هذا الموضع
                     </button>
                     <button
-                      className="btn"
-                      onClick={() => goStep(step - 1)}
-                      disabled={step === 0}
-                      aria-label="الخطوة السابقة"
+                      role="radio"
+                      aria-checked={allView}
+                      className={`seg${allView ? ' seg-on' : ''}`}
+                      onClick={() => update({ view: 'all', mode: null, step: null, node: null })}
                     >
-                      →
+                      جميع الطرق
                     </button>
-                    <span className="tabular-nums text-sm" aria-hidden>
-                      {step + 1} / {order.length}
-                    </span>
-                    <button
-                      className="btn"
-                      onClick={() => goStep(step + 1)}
-                      disabled={step >= lastStep}
-                      aria-label="الخطوة التالية"
-                    >
-                      ←
-                    </button>
-                    <button className="btn" onClick={() => goStep(0)}>
-                      من البداية
-                    </button>
-                    <label className="text-sm">
-                      <span className="sr-only">السرعة</span>
-                      <select
-                        value={journey.speed}
-                        onChange={(e) => update({ speed: e.target.value })}
-                        className="select"
-                      >
-                        <option value="0.5">0.5×</option>
-                        <option value="1">1×</option>
-                        <option value="2">2×</option>
-                      </select>
-                    </label>
-                    <button className="btn" onClick={() => update({ mode: null, step: null })}>
-                      إنهاء
-                    </button>
-                  </>
+                  </div>
                 )}
                 <div
                   className="inline-flex rounded-md border border-hairline"
                   role="radiogroup"
-                  aria-label="اتجاه الرحلة"
+                  aria-label="تخطيط المخطط"
                 >
-                  {(
-                    [
-                      ['trace', 'تتبّع الإسناد'],
-                      ['journey', 'رحلة النقل'],
-                    ] as const
-                  ).map(([v, label]) => (
-                    <button
-                      key={v}
-                      role="radio"
-                      aria-checked={journey.dir === v}
-                      className={`seg${journey.dir === v ? ' seg-on' : ''}`}
-                      onClick={() => update({ dir: v, step: '0' })}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <button
+                    role="radio"
+                    aria-checked={layoutMode === 'layered'}
+                    className={`seg${layoutMode === 'layered' ? ' seg-on' : ''}`}
+                    onClick={() => update({ layout: null })}
+                  >
+                    طبقات
+                  </button>
+                  <button
+                    role="radio"
+                    aria-checked={layoutMode === 'timeline'}
+                    className={`seg${layoutMode === 'timeline' ? ' seg-on' : ''}`}
+                    onClick={() => update({ layout: 'timeline' })}
+                  >
+                    خط زمني
+                  </button>
                 </div>
-                {g.chains.length > 1 && (
+              </div>
+              {allView ? (
+                <div className="journey-controls">
+                  <p className="w-full text-sm text-ink-muted">
+                    {g.chains.length} طريقًا من {groupEntries.length} مواضع:{' '}
+                    {groupEntries.map((n, i) => (
+                      <span key={n}>
+                        {i ? '، ' : ''}
+                        <Link className="link" to={`/bukhari/${n}?view=all`}>
+                          {n}
+                        </Link>
+                      </span>
+                    ))}
+                  </p>
                   <label className="text-sm">
-                    <span className="me-1">الطريق</span>
+                    <span className="me-1">شيخ البخاري</span>
                     <select
-                      value={journey.routeId ?? ''}
-                      onChange={(e) => update({ route: e.target.value, step: '0' })}
                       className="select"
+                      value={teacherFilter ?? ''}
+                      onChange={(e) => update({ t: e.target.value || null, edge: null })}
                     >
-                      {g.chains.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.routeNo}
-                          {c.isSuspended ? ' (معلّق)' : ''}
+                      <option value="">الكل</option>
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
                         </option>
                       ))}
                     </select>
                   </label>
-                )}
-              </div>
+                  <label className="text-sm">
+                    <span className="me-1">طول الإسناد حتى</span>
+                    <select
+                      className="select"
+                      value={maxLen || ''}
+                      onChange={(e) => update({ len: e.target.value || null, edge: null })}
+                    >
+                      <option value="">أي طول</option>
+                      {[3, 4, 5, 6, 7, 8].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={onlyConnected}
+                      onChange={(e) => update({ hu: e.target.checked ? '1' : null, edge: null })}
+                    />
+                    إخفاء الطرق المعلّقة والمنقطعة وغير المؤكدة
+                  </label>
+                </div>
+              ) : (
+                <div className="journey-controls">
+                  {!journey.active ? (
+                    <button className="btn-primary" onClick={() => update({ mode: 'journey', step: '0', node: null })}>
+                      استكشاف الإسناد
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="btn"
+                        onClick={() => setPlaying((p) => !p)}
+                        disabled={reducedMotion}
+                        aria-pressed={playing}
+                      >
+                        {playing ? 'إيقاف' : 'تشغيل'}
+                      </button>
+                      <button
+                        className="btn"
+                        onClick={() => goStep(step - 1)}
+                        disabled={step === 0}
+                        aria-label="الخطوة السابقة"
+                      >
+                        →
+                      </button>
+                      <span className="tabular-nums text-sm" aria-hidden>
+                        {step + 1} / {order.length}
+                      </span>
+                      <button
+                        className="btn"
+                        onClick={() => goStep(step + 1)}
+                        disabled={step >= lastStep}
+                        aria-label="الخطوة التالية"
+                      >
+                        ←
+                      </button>
+                      <button className="btn" onClick={() => goStep(0)}>
+                        من البداية
+                      </button>
+                      <label className="text-sm">
+                        <span className="sr-only">السرعة</span>
+                        <select
+                          value={journey.speed}
+                          onChange={(e) => update({ speed: e.target.value })}
+                          className="select"
+                        >
+                          <option value="0.5">0.5×</option>
+                          <option value="1">1×</option>
+                          <option value="2">2×</option>
+                        </select>
+                      </label>
+                      <button className="btn" onClick={() => update({ mode: null, step: null })}>
+                        إنهاء
+                      </button>
+                    </>
+                  )}
+                  <div
+                    className="inline-flex rounded-md border border-hairline"
+                    role="radiogroup"
+                    aria-label="اتجاه الرحلة"
+                  >
+                    {(
+                      [
+                        ['trace', 'تتبّع الإسناد'],
+                        ['journey', 'رحلة النقل'],
+                      ] as const
+                    ).map(([v, label]) => (
+                      <button
+                        key={v}
+                        role="radio"
+                        aria-checked={journey.dir === v}
+                        className={`seg${journey.dir === v ? ' seg-on' : ''}`}
+                        onClick={() => update({ dir: v, step: '0' })}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {g.chains.length > 1 && (
+                    <label className="text-sm">
+                      <span className="me-1">الطريق</span>
+                      <select
+                        value={journey.routeId ?? ''}
+                        onChange={(e) => update({ route: e.target.value, step: '0' })}
+                        className="select"
+                      >
+                        {g.chains.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.routeNo}
+                            {c.isSuspended ? ' (معلّق)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+              )}
               <div className="graph-canvas">
                 <IsnadGraphView
                   graph={g}
@@ -348,14 +510,40 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                   }
                   reducedMotion={reducedMotion}
                   ringIds={madar}
+                  layoutMode={layoutMode}
+                  markIds={divergence}
+                  edgeColor={edgeColor}
+                  growDelay={growDelay}
+                  selectedEdge={selectedEdge}
+                  {...(allView ? { onSelectEdge: (key: string) => update({ edge: key }) } : {})}
                 />
               </div>
+              {allView && (
+                <p className="mt-2 text-xs text-ink-muted">
+                  الحلقة «المدار» حيث تلتقي الطرق، و«تفرّع» حيث تفترق. سُمك الخط بعدد الطرق المارّة به، ولون الطريق المنفرد
+                  يميّزه. اضغط رابطًا لعرض مواضعه.
+                </p>
+              )}
+              {selectedEdge && (
+                <div className="summary" role="status">
+                  <h3 className="font-semibold">المواضع التي تستعمل هذا الرابط</h3>
+                  <ul className="mt-1 flex flex-wrap gap-2 text-sm">
+                    {edgeEntries.map((n) => (
+                      <li key={n}>
+                        <Link className="chip tabular-nums" to={`/bukhari/${n}`}>
+                          {n}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <p className="sr-only" aria-live="polite">
                 {announce}
               </p>
               {done && <JourneySummary graph={g} order={order} dir={journey.dir} />}
               <TextAlternative graph={g} activeRoute={journey.routeId} />
-              <Indicators graph={g} />
+              <Indicators graph={baseGraph} sources={allView ? group.sources : hadith.sources} />
             </>
           )}
         </section>
@@ -459,8 +647,8 @@ function TextAlternative({ graph, activeRoute }: { graph: IsnadGraph; activeRout
   );
 }
 
-/** «مؤشرات للباحث» (SPEC §13): inputs, formula and scope; never a verdict. */
-function Indicators({ graph }: { graph: IsnadGraph }) {
+/** «مؤشرات للباحث» (SPEC §13): inputs, formula and scope; neutral words, no combined score, never a verdict. */
+function Indicators({ graph, sources }: { graph: IsnadGraph; sources: SourceInfo[] }) {
   if (!graph.indicators.length) return null;
   return (
     <section className="mt-3" aria-labelledby="ind-title">
@@ -468,14 +656,30 @@ function Indicators({ graph }: { graph: IsnadGraph }) {
         مؤشرات للباحث
       </h3>
       <p className="text-xs text-ink-muted">إشارات تساعد الباحث، وليست أحكامًا على الحديث.</p>
-      <dl className="facts mt-1 text-sm">
+      <div className="mt-1 space-y-1">
         {graph.indicators.map((i) => (
-          <div key={i.key} className="contents">
-            <dt title={`${i.formulaAr} النطاق: ${i.scopeAr}.`}>{i.labelAr}</dt>
-            <dd>{i.valueAr}</dd>
-          </div>
+          <details key={i.key} className="indicator">
+            <summary className="flex cursor-pointer flex-wrap justify-between gap-2 text-sm">
+              <span className="font-semibold">{i.labelAr}</span>
+              <span>{i.valueAr}</span>
+            </summary>
+            <p className="mt-1 text-xs text-ink-muted">
+              {i.formulaAr} النطاق: {i.scopeAr}.
+            </p>
+            {i.inputs.length > 0 && (
+              <ul className="mt-1 space-y-0.5 text-xs">
+                {i.inputs.map((x, k) => (
+                  <li key={k}>
+                    {x.labelAr}
+                    {x.value != null && <>: {x.value}</>}{' '}
+                    <Cite ids={x.citationIds} citations={graph.citations} sources={sources} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
         ))}
-      </dl>
+      </div>
     </section>
   );
 }

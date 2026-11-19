@@ -7,7 +7,7 @@
  */
 import type { GraphChain, GraphEdge, GraphNode, IsnadGraph, LinkKind, ReviewStatus, Terminus } from '@isnad/shared';
 import { nodeIdForLink } from './ids';
-import { computeIndicators } from './indicators';
+import { computeIndicators, type PlacesByNarrator } from './indicators';
 
 export interface LinkRow {
   chainId: number;
@@ -41,6 +41,7 @@ export function assembleGraph(
   scope: IsnadGraph['scope'],
   dataVersion: string,
   citations: IsnadGraph['citations'],
+  places: PlacesByNarrator = new Map(),
 ): IsnadGraph {
   const nodes = new Map<string, GraphNode>();
   const edges = new Map<string, GraphEdge>();
@@ -99,7 +100,7 @@ export function assembleGraph(
     indicators: [],
     citations,
   };
-  graph.indicators = computeIndicators(graph);
+  graph.indicators = computeIndicators(graph, places);
   return graph;
 }
 

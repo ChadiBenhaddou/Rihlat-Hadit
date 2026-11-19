@@ -30,6 +30,15 @@
   --tabaqa-6: #8f8a4e;
   --tabaqa-7: #9a7d47;
   --tabaqa-8: #9c6f45;
+  /* One hue per route in the all-routes view; line style still encodes link kind. */
+  --route-1: #1d5c57;
+  --route-2: #8a3b12;
+  --route-3: #3d4f9a;
+  --route-4: #7a5a00;
+  --route-5: #6b3a7a;
+  --route-6: #2f6e2f;
+  --route-7: #9a2f4f;
+  --route-8: #4a5560;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,10 +59,26 @@
     --tabaqa-6: #d0b376;
     --tabaqa-7: #d8a876;
     --tabaqa-8: #dc9d7a;
+    --route-1: #7fbfb8;
+    --route-2: #e8a27a;
+    --route-3: #a5b2f0;
+    --route-4: #e0c060;
+    --route-5: #d3a2e0;
+    --route-6: #9fd49f;
+    --route-7: #f0a0b8;
+    --route-8: #b8c2cc;
   }
 }
 
 :root[data-theme='dark'] {
+  --route-1: #7fbfb8;
+  --route-2: #e8a27a;
+  --route-3: #a5b2f0;
+  --route-4: #e0c060;
+  --route-5: #d3a2e0;
+  --route-6: #9fd49f;
+  --route-7: #f0a0b8;
+  --route-8: #b8c2cc;
   --color-bg: #14130f;
   --color-surface: #1d1c17;
   --color-ink: #ece7da;
@@ -459,5 +484,37 @@ body {
     border-radius: 0.75rem;
     background: var(--color-surface);
     padding: 1.25rem;
+  }
+}
+
+@layer components {
+  .graph-flag {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    fill: var(--color-accent);
+  }
+  /* All routes grow from the source downward (SPEC §12 ج). */
+  .grow-in {
+    animation: grow-in 450ms ease-out both;
+  }
+  @keyframes grow-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .indicator {
+    border-block-end: 1px solid var(--color-hairline);
+    padding-block: 0.35rem;
+  }
+}
+
+@layer components {
+  /* Lifespan bar behind the node, from the cited birth year to the death year. */
+  .lifespan {
+    fill: var(--color-hairline);
   }
 }

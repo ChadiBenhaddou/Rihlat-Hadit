@@ -11,7 +11,7 @@ import { zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
 import 'd3-transition';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { hijri } from '~/lib/format';
-import { layoutGraph, type Layout, type Point } from './layout';
+import { layoutGraph, toTimeline, type Layout, type Point, type Timeline } from './layout';
 
 export interface GraphFocus {
   /** Nodes and edges the journey has reached; null = everything is shown normally. */
@@ -20,6 +20,8 @@ export interface GraphFocus {
   activeNode: string | null;
   activeEdge: string | null;
 }
+
+export type LayoutMode = 'layered' | 'timeline';
 
 interface Props {
   graph: IsnadGraph;
@@ -31,8 +33,18 @@ interface Props {
   onHover: (id: string | null) => void;
   onSelect: (id: string) => void;
   reducedMotion: boolean;
+  layoutMode?: LayoutMode;
   /** Highlight the common link with a ring (SPEC §12 ج). */
   ringIds?: string[];
+  /** Divergence points: narrators from whom routes split. */
+  markIds?: string[];
+  /** Per-edge colour (all-routes view: one hue per route); line style still encodes kind. */
+  edgeColor?: (key: string) => string | undefined;
+  /** Clicking a link lists the entries that use it. */
+  onSelectEdge?: (key: string) => void;
+  selectedEdge?: string | null;
+  /** Grow-in delay per node (ms): routes grow from the source downward. */
+  growDelay?: Map<string, number>;
 }
 
 export function labelOf(n: GraphNode): string {
@@ -75,9 +87,15 @@ export function IsnadGraphView({
   onHover,
   onSelect,
   reducedMotion,
+  layoutMode = 'layered',
   ringIds = [],
+  markIds = [],
+  edgeColor,
+  onSelectEdge,
+  selectedEdge = null,
+  growDelay,
 }: Props) {
-  const [layout, setLayout] = useState<Layout | null>(null);
+  const [base, setBase] = useState<Layout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
@@ -87,22 +105,28 @@ export function IsnadGraphView({
 
   useEffect(() => {
     let live = true;
-    setLayout(null);
+    setBase(null);
     layoutGraph(graph, (id) => labelOf(byId.get(id)!))
-      .then((l) => live && setLayout(l))
+      .then((l) => live && setBase(l))
       .catch((e: unknown) => live && setError(String(e)));
     return () => {
       live = false;
     };
   }, [graph, byId]);
 
-  // Pan and zoom.
+  const timeline: Timeline | null = useMemo(
+    () => (base && layoutMode === 'timeline' ? toTimeline(base, graph) : null),
+    [base, layoutMode, graph],
+  );
+  const layout = timeline?.layout ?? base;
+
+  // Pan and zoom; refit whenever the layout changes.
   useEffect(() => {
     if (!layout || !svgRef.current || !gRef.current) return;
     const svg = select(svgRef.current);
     const g = select(gRef.current);
     const z = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 2.5])
+      .scaleExtent([0.2, 2.5])
       .on('zoom', (e) => g.attr('transform', e.transform.toString()));
     zoomRef.current = z;
     svg.call(z);
@@ -141,6 +165,8 @@ export function IsnadGraphView({
 
   const dimmed = (id: string) => focus.visibleNodes != null && !focus.visibleNodes.has(id);
   const order = [...tabOrder, ...graph.nodes.map((n) => n.id).filter((id) => !tabOrder.includes(id))];
+  const grow = (id: string) =>
+    growDelay && !reducedMotion && growDelay.has(id) ? { animationDelay: `${growDelay.get(id)}ms` } : undefined;
 
   return (
     <div className="relative h-full min-h-[24rem] w-full">
@@ -160,32 +186,62 @@ export function IsnadGraphView({
           </marker>
         </defs>
         <g ref={gRef}>
+          {timeline && (
+            <g className="timeline-axis" aria-hidden>
+              {timeline.ticks.map((t) => (
+                <g key={t.year} transform={`translate(0,${t.y})`}>
+                  <line x1={0} x2={layout!.width} stroke="var(--color-hairline)" />
+                  <text x={layout!.width - 4} y={-4} textAnchor="end" className="graph-meta">
+                    {t.year} هـ
+                  </text>
+                </g>
+              ))}
+            </g>
+          )}
           {layout?.edges.map((le) => {
             const e = edgeByKey.get(le.key);
             if (!e || le.points.length < 2) return null;
             const isDim = focus.visibleEdges != null && !focus.visibleEdges.has(le.key);
             const isActive = focus.activeEdge === le.key;
-            const hot = hoverId != null && (e.from === hoverId || e.to === hoverId);
+            const hot = (hoverId != null && (e.from === hoverId || e.to === hoverId)) || selectedEdge === le.key;
             const width = 1.5 + Math.min(4, e.chainIds.length - 1) * 0.75;
             const dash =
               e.kind === 'uncertain' ? '8 6' : e.kind === 'suspended' || e.kind === 'gap' ? '1 7' : undefined;
             const mid = midpoint(le.points);
             const label = [e.termAr, KIND_AR[e.kind]].filter(Boolean).join(' · ');
+            const color = hot ? 'var(--color-accent)' : (edgeColor?.(le.key) ?? 'var(--color-line)');
+            const d = polyline(le.points);
             return (
-              <g key={le.key} className="graph-edge" opacity={isDim ? 0.15 : 1}>
+              <g
+                key={le.key}
+                className={`graph-edge${grow(e.from) ? ' grow-in' : ''}`}
+                style={grow(e.from)}
+                opacity={isDim ? 0.15 : 1}
+              >
                 <path
-                  d={polyline(le.points)}
+                  d={d}
                   fill="none"
-                  stroke={hot ? 'var(--color-accent)' : 'var(--color-line)'}
+                  stroke={color}
                   strokeWidth={width}
                   strokeDasharray={dash}
                   strokeLinecap="round"
                   markerEnd="url(#arrow)"
                 />
+                {onSelectEdge && (
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={14}
+                    className="cursor-pointer"
+                    onClick={() => onSelectEdge(le.key)}
+                    aria-hidden
+                  />
+                )}
                 {isActive && !reducedMotion && (
                   <path
                     key={`draw-${le.key}`}
-                    d={polyline(le.points)}
+                    d={d}
                     fill="none"
                     stroke="var(--color-accent)"
                     strokeWidth={width + 1.5}
@@ -193,7 +249,7 @@ export function IsnadGraphView({
                     className="journey-draw"
                   />
                 )}
-                {label && (
+                {label && layoutMode === 'layered' && (
                   <g
                     className={isActive && !reducedMotion ? 'journey-term' : undefined}
                     transform={`translate(${mid.x},${mid.y})`}
@@ -222,22 +278,27 @@ export function IsnadGraphView({
               const active = focus.activeNode === id;
               const sel = selectedId === id;
               const hot = hoverId === id;
+              const undated = timeline?.undated.has(id) ?? false;
               const meta =
                 n.role === 'prophet'
                   ? ''
                   : n.role === 'unresolved'
                     ? 'اسم مبهم'
-                    : (hijri(n.deathAh, n.deathAhMax, 'ت ')?.replace(/ \(.*\)$/, '') ?? 'سنة الوفاة غير متوفرة');
+                    : undated
+                      ? '' // the timeline never shows a year the sources do not give
+                      : (hijri(n.deathAh, n.deathAhMax, 'ت ')?.replace(/ \(.*\)$/, '') ?? 'سنة الوفاة غير متوفرة');
+              const life = timeline?.lifespans.get(id);
               return (
                 <g
                   key={id}
                   transform={`translate(${p.x},${p.y})`}
-                  className={`graph-node${active && !reducedMotion ? ' journey-node' : ''}`}
+                  className={`graph-node${active && !reducedMotion ? ' journey-node' : ''}${grow(id) ? ' grow-in' : ''}`}
+                  style={grow(id)}
                   opacity={dimmed(id) ? 0.15 : 1}
                   tabIndex={0}
                   role="button"
                   aria-pressed={sel}
-                  aria-label={`${labelOf(n)}${meta ? `، ${meta}` : ''}`}
+                  aria-label={`${labelOf(n)}${meta ? `، ${meta}` : undated ? '، سنة الوفاة غير متوفرة' : ''}`}
                   onMouseEnter={() => onHover(id)}
                   onMouseLeave={() => onHover(null)}
                   onFocus={() => onHover(id)}
@@ -250,6 +311,19 @@ export function IsnadGraphView({
                     }
                   }}
                 >
+                  {undated && <title>سنة الوفاة غير متوفرة</title>}
+                  {life && (
+                    <rect
+                      x={p.width / 2 - 1}
+                      y={life.y1 - p.y}
+                      width={2}
+                      height={Math.max(2, life.y2 - life.y1)}
+                      rx={1}
+                      className="lifespan"
+                    >
+                      <title>{`عاش نحو ${hijri(n.birthAh, null) ?? ''} – ${hijri(n.deathAh, n.deathAhMax) ?? ''}`}</title>
+                    </rect>
+                  )}
                   {(ringIds.includes(id) || n.role === 'prophet') && (
                     <rect
                       x={-5}
@@ -270,7 +344,9 @@ export function IsnadGraphView({
                     stroke={sel || hot || active ? 'var(--color-accent)' : tabaqaVar(n.tabaqa)}
                     strokeWidth={sel || active ? 3 : 2}
                     strokeDasharray={
-                      n.role === 'unresolved' || (n.deathAh == null && n.role !== 'prophet') ? '5 4' : undefined
+                      n.role === 'unresolved' || undated || (n.deathAh == null && n.role !== 'prophet')
+                        ? '5 4'
+                        : undefined
                     }
                   />
                   <text
@@ -285,6 +361,16 @@ export function IsnadGraphView({
                   {meta && (
                     <text x={p.width / 2} y={39} textAnchor="middle" dominantBaseline="central" className="graph-meta">
                       {meta}
+                    </text>
+                  )}
+                  {ringIds.includes(id) && (
+                    <text x={p.width / 2} y={-12} textAnchor="middle" className="graph-flag">
+                      المدار
+                    </text>
+                  )}
+                  {markIds.includes(id) && !ringIds.includes(id) && (
+                    <text x={p.width / 2} y={p.height + 14} textAnchor="middle" className="graph-flag">
+                      تفرّع
                     </text>
                   )}
                 </g>

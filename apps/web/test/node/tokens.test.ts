@@ -42,6 +42,7 @@ const pairs: Array<[string, number]> = [
   ['color-line', 3],
   ['color-focus', 3],
   ...Array.from({ length: 8 }, (_, i) => [`tabaqa-${i + 1}`, 3] as [string, number]),
+  ...Array.from({ length: 8 }, (_, i) => [`route-${i + 1}`, 3] as [string, number]),
 ];
 
 describe.each(Object.entries(themes))('%s theme', (_name, t) => {

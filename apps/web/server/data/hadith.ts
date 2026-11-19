@@ -2,7 +2,7 @@ import { nodeIdForLink, type LinkRow } from '@isnad/graph';
 import type { HadithResponse, ReviewStatus } from '@isnad/shared';
 import type { Db } from '../db';
 import type { CitationRow } from './common';
-import { hadithGraphStatements, toGraph } from './graph';
+import { hadithGraphStatements, toGraph, type PlaceRow } from './graph';
 
 const HADITH_SEL =
   'SELECT h.id FROM hadiths h JOIN collections c ON c.id = h.collection_id WHERE c.slug = ? AND h.ref_number = ?';
@@ -34,7 +34,7 @@ export async function getHadith(
   dataVersion: string,
 ): Promise<HadithResponse | null> {
   const binds = [collection, number];
-  const [main, numbers, links, cites] = await db.batch([
+  const [main, numbers, links, cites, places] = await db.batch([
     db
       .prepare(
         `SELECT h.id, h.ref_number, h.text_ar, h.isnad_ar, h.matn_ar, h.group_id, h.citation_id, h.review_status,
@@ -68,6 +68,7 @@ export async function getHadith(
     (cites?.results ?? []) as CitationRow[],
     { kind: 'hadith', collection, number },
     dataVersion,
+    (places?.results ?? []) as PlaceRow[],
   );
   return {
     dataVersion,

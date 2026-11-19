@@ -7,10 +7,85 @@ import type { Indicator, IsnadGraph } from '@isnad/shared';
 
 const SCOPE = 'ضمن صحيح البخاري كما هو محمَّل هنا';
 
-export function computeIndicators(g: IsnadGraph): Indicator[] {
+/** Cited places per narrator id (lived/died), for «البلد المشترك». */
+export type PlacesByNarrator = Map<number, { nameAr: string; citationId: number | null }[]>;
+
+export function computeIndicators(g: IsnadGraph, places: PlacesByNarrator = new Map()): Indicator[] {
   const out: Indicator[] = [];
   if (g.chains.length === 0) return out;
   const nameOf = new Map(g.nodes.map((n) => [n.id, n.nameAr]));
+  const node = new Map(g.nodes.map((n) => [n.id, n]));
+  // Links between two narrators; links to the Prophet ﷺ are not measured.
+  const personLinks = g.edges.filter((e) => {
+    const a = node.get(e.from);
+    const b = node.get(e.to);
+    return a && b && a.narratorId != null && b.narratorId != null && a.role !== 'prophet' && b.role !== 'prophet';
+  });
+
+  // المعاصرة: the student's cited birth year against the teacher's cited death year.
+  let overlap = 0;
+  let none = 0;
+  let unknown = 0;
+  const contemp = personLinks.map((e) => {
+    const teacher = node.get(e.from)!;
+    const student = node.get(e.to)!;
+    const label = `${teacher.nameAr} ← ${student.nameAr}`;
+    if (teacher.deathAh == null || student.birthAh == null) {
+      unknown++;
+      return { labelAr: label, value: 'غير متوفر', citationIds: [] };
+    }
+    const years = (teacher.deathAhMax ?? teacher.deathAh) - student.birthAh;
+    const cites = [...new Set([...teacher.citationIds, ...student.citationIds])];
+    if (years >= 0) {
+      overlap++;
+      return { labelAr: label, value: `تداخل نحو ${years} سنة`, citationIds: cites };
+    }
+    none++;
+    return { labelAr: label, value: 'لا تداخل ظاهر بحسب التواريخ المتاحة', citationIds: cites };
+  });
+  if (personLinks.length) {
+    out.push({
+      key: 'contemporaneity',
+      labelAr: 'المعاصرة',
+      formulaAr: 'سنة وفاة الشيخ ناقص سنة مولد التلميذ، حين يُذكر التاريخان في المصدر.',
+      scopeAr: SCOPE,
+      inputs: contemp,
+      valueAr: `تداخل ظاهر: ${overlap} · لا تداخل ظاهر: ${none} · غير متوفر: ${unknown}`,
+    });
+  }
+
+  // البلد المشترك: cities both narrators are recorded in; missing data is never evidence.
+  let shared = 0;
+  const placeInputs = personLinks.map((e) => {
+    const a = node.get(e.from)!;
+    const b = node.get(e.to)!;
+    const pa = places.get(a.narratorId!) ?? [];
+    const pb = places.get(b.narratorId!) ?? [];
+    const common = pa.filter((x) => pb.some((y) => y.nameAr === x.nameAr));
+    const names = [...new Set(common.map((x) => x.nameAr))];
+    if (names.length) shared++;
+    return {
+      labelAr: `${a.nameAr} ← ${b.nameAr}`,
+      value: names.length ? names.join('، ') : 'لا بلد مشترك مسجّل',
+      citationIds: [
+        ...new Set(
+          [...common, ...pb.filter((y) => names.includes(y.nameAr))].flatMap((x) =>
+            x.citationId != null ? [x.citationId] : [],
+          ),
+        ),
+      ],
+    };
+  });
+  if (personLinks.length) {
+    out.push({
+      key: 'shared_places',
+      labelAr: 'البلد المشترك',
+      formulaAr: 'المدن المسجّلة للشيخ والتلميذ معًا (إقامة أو وفاة). غياب البلد لا يدل على شيء.',
+      scopeAr: SCOPE,
+      inputs: placeInputs,
+      valueAr: `روابط ببلد مشترك مسجّل: ${shared} من ${personLinks.length}`,
+    });
+  }
 
   // طول الإسناد: narrators strictly between the compiler and the Prophet ﷺ, per route.
   const lengths = g.chains.map((c) => {

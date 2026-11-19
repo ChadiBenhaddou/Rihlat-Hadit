@@ -85,3 +85,77 @@ export async function layoutGraph(g: IsnadGraph, labelOf: (id: string) => string
   });
   return { width: r.width, height: r.height, nodes, edges };
 }
+
+/**
+ * Timeline layout (SPEC §12): the vertical axis is the death year in AH. Nodes keep
+ * the layered layout's horizontal position. A narrator without a death year sits
+ * between the chain neighbours that have one, marked undated, with no year
+ * label: the layout never implies a date the sources do not give.
+ */
+export interface Timeline {
+  layout: Layout;
+  ticks: { year: number; y: number }[];
+  undated: Set<string>;
+  lifespans: Map<string, { y1: number; y2: number }>;
+}
+
+const PX_PER_YEAR = 3.2;
+const TOP = 70;
+
+export function toTimeline(base: Layout, g: IsnadGraph): Timeline {
+  const years = g.nodes.flatMap((n) => (n.deathAh != null ? [n.deathAh] : []));
+  const min = years.length ? Math.min(...years) : 0;
+  const yOf = (year: number) => TOP + (year - min) * PX_PER_YEAR;
+  const y = new Map<string, number>();
+  for (const n of g.nodes) if (n.deathAh != null) y.set(n.id, yOf(n.deathAh));
+  // The Prophet ﷺ sits above the earliest year: the source of every route.
+  for (const n of g.nodes) if (n.role === 'prophet') y.set(n.id, 10);
+
+  // Undated: midway between the nearest dated neighbours along any chain.
+  const undated = new Set<string>();
+  for (const n of g.nodes) {
+    if (y.has(n.id)) continue;
+    undated.add(n.id);
+    const guesses: number[] = [];
+    for (const c of g.chains) {
+      const i = c.nodeIds.indexOf(n.id);
+      if (i < 0) continue;
+      const after = c.nodeIds
+        .slice(0, i)
+        .reverse()
+        .find((id) => y.has(id)); // student side (later)
+      const before = c.nodeIds.slice(i + 1).find((id) => y.has(id)); // teacher side (earlier)
+      if (after && before) guesses.push((y.get(after)! + y.get(before)!) / 2);
+      else if (after) guesses.push(y.get(after)! - 40);
+      else if (before) guesses.push(y.get(before)! + 40);
+    }
+    y.set(n.id, guesses.length ? guesses.reduce((a, b) => a + b, 0) / guesses.length : TOP);
+  }
+
+  const nodes = new Map<string, PlacedNode>();
+  for (const [id, p] of base.nodes) nodes.set(id, { ...p, y: y.get(id) ?? p.y });
+  const edges = base.edges.map((e) => {
+    const a = nodes.get(e.from)!;
+    const b = nodes.get(e.to)!;
+    const down = a.y <= b.y;
+    return {
+      ...e,
+      points: [
+        { x: a.x + a.width / 2, y: down ? a.y + a.height : a.y },
+        { x: b.x + b.width / 2, y: down ? b.y : b.y + b.height },
+      ],
+    };
+  });
+  const lifespans = new Map<string, { y1: number; y2: number }>();
+  for (const n of g.nodes) {
+    if (n.birthAh != null && n.deathAh != null && !undated.has(n.id))
+      lifespans.set(n.id, { y1: yOf(n.birthAh), y2: yOf(n.deathAh) });
+  }
+  const maxY = Math.max(...[...nodes.values()].map((p) => p.y + p.height), TOP) + 30;
+  const ticks: { year: number; y: number }[] = [];
+  if (years.length) {
+    const max = Math.max(...years);
+    for (let yr = Math.ceil(min / 25) * 25; yr <= max; yr += 25) ticks.push({ year: yr, y: yOf(yr) });
+  }
+  return { layout: { width: base.width + 60, height: maxY, nodes, edges }, ticks, undated, lifespans };
+}
