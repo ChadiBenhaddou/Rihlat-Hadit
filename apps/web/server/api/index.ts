@@ -14,6 +14,7 @@ import { getHadith } from '../data/hadith';
 import { getNarrator } from '../data/narrators';
 import { getNetwork, getShared } from '../data/network';
 import { searchHadith, searchNarrators } from '../data/search';
+import { admin } from '../admin/api';
 import { problem } from '../problem';
 import { ReportInput, verifyTurnstile } from '../reports';
 import { currentDataVersion } from '../version';
@@ -69,13 +70,24 @@ reads.get('/narrators/:slug', async (c) => {
   const slug = Slug.safeParse(c.req.param('slug'));
   if (!slug.success) return problem(c, 400, 'Bad Request');
   const body = await getNarrator(coreDb(c.env), slug.data, c.get('dataVersion'));
-  return body ? c.json(body) : problem(c, 404, 'Not Found', 'no such narrator');
+  if (body) return c.json(body);
+  // A merged narrator's old slug keeps working (SPEC §14).
+  const moved = await coreDb(c.env)
+    .prepare('SELECT n.slug FROM narrator_redirects r JOIN narrators n ON n.id = r.narrator_id WHERE r.old_slug = ?')
+    .bind(slug.data)
+    .first<{ slug: string }>();
+  if (moved)
+    return c.redirect(c.req.path.replace(new RegExp(`/narrators/${slug.data}$`), `/narrators/${moved.slug}`), 301);
+  return problem(c, 404, 'Not Found', 'no such narrator');
 });
 
-const Ref = z.string().regex(/^[a-z0-9-]{1,64}\/\d{1,5}$/).transform((v) => {
-  const [c, n] = v.split('/') as [string, string];
-  return [c, Number(n)] as [string, number];
-});
+const Ref = z
+  .string()
+  .regex(/^[a-z0-9-]{1,64}\/\d{1,5}$/)
+  .transform((v) => {
+    const [c, n] = v.split('/') as [string, string];
+    return [c, Number(n)] as [string, number];
+  });
 
 reads.get('/compare', async (c) => {
   const a = Ref.safeParse(c.req.query('a'));
@@ -188,6 +200,7 @@ api.use('/d/:dataVersion/*', async (c, next) => {
   }
 });
 
+api.route('/admin', admin);
 api.route('/', reads);
 api.route('/d/:dataVersion', reads);
 

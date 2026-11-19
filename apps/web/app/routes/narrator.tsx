@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, redirect, useSearchParams } from 'react-router';
 import { Cite } from '~/components/Cite';
 import { ReportButton } from '~/components/ReportButton';
 import { ReviewBadge } from '~/components/ReviewBadge';
@@ -15,7 +15,15 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   if (!/^[a-z0-9-]{1,64}$/.test(params.slug)) notFound();
   const { db, dataVersion } = await dataContext(context);
   const narrator = await getNarrator(db, params.slug, dataVersion);
-  if (!narrator) notFound();
+  if (!narrator) {
+    // A merged narrator's old slug keeps working (SPEC §14).
+    const moved = await db
+      .prepare('SELECT n.slug FROM narrator_redirects r JOIN narrators n ON n.id = r.narrator_id WHERE r.old_slug = ?')
+      .bind(params.slug)
+      .first<{ slug: string }>();
+    if (moved) throw redirect(`/narrator/${moved.slug}`, 301);
+    notFound();
+  }
   return { narrator };
 }
 

@@ -16,7 +16,7 @@ w d1 migrations apply SEARCH_DB >/dev/null
 
 reset=$(mktemp)
 trap 'rm -f "$reset"' EXIT
-for t in data_versions transmissions chain_links chains hadith_numbers hadiths hadith_groups chapters books \
+for t in narrator_redirects proposals review_items data_versions transmissions chain_links chains hadith_numbers hadiths hadith_groups chapters books \
          collections gradings narrator_places places narrator_flags narrator_names narrators citations sources; do
   echo "DELETE FROM $t;" >> "$reset"
 done
@@ -25,6 +25,7 @@ printf 'DELETE FROM matn_fts;\nDELETE FROM narrator_fts;\n' > "$reset"
 w d1 execute SEARCH_DB --file "$reset" >/dev/null
 
 for f in "$OUT"/sql/core-*.sql; do echo "core   $(basename "$f")"; w d1 execute DB --file "$f" >/dev/null; done
+for f in "$OUT"/sql/review-*.sql; do echo "review $(basename "$f")"; w d1 execute DB --file "$f" >/dev/null; done
 for f in "$OUT"/sql/search-*.sql; do echo "search $(basename "$f")"; w d1 execute SEARCH_DB --file "$f" >/dev/null; done
 
 label=$(python3 -I -c "import sqlite3; print(sqlite3.connect('$OUT/core.sqlite').execute('SELECT label FROM data_versions ORDER BY id DESC LIMIT 1').fetchone()[0])")

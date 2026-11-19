@@ -2,3 +2,6 @@
 # Cloudflare's documented always-pass Turnstile TEST secret:
 TURNSTILE_SECRET=1x0000000000000000000000000000000AA
 ACCESS_AUD=local-placeholder
+
+# Local development only: production builds ignore this (import.meta.env.DEV).
+DEV_ADMIN_EMAIL=admin@localhost

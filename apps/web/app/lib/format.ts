@@ -12,7 +12,12 @@ export function hijri(ah: number | null | undefined, ahMax?: number | null, pref
 
 export const UNAVAILABLE = 'غير متوفر';
 
-export const RELATION_AR: Record<string, string> = { born: 'وُلد في', lived: 'أقام في', travelled: 'رحل إلى', died: 'توفي في' };
+export const RELATION_AR: Record<string, string> = {
+  born: 'وُلد في',
+  lived: 'أقام في',
+  travelled: 'رحل إلى',
+  died: 'توفي في',
+};
 export const FLAG_AR: Record<string, string> = { tadlis: 'وُصف بالتدليس', ikhtilat: 'وُصف بالاختلاط' };
 export const ROLE_AR: Record<string, string> = {
   prophet: 'النبي ﷺ',

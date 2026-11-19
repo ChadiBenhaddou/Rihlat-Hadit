@@ -50,7 +50,7 @@ NOT_PERSONS = set(PLACEHOLDERS.link_kind) | set(PLACEHOLDERS.unnamed)
 CORE_TABLES = [
     "sources", "citations", "narrators", "narrator_names", "narrator_flags", "places", "narrator_places",
     "gradings", "collections", "books", "chapters", "hadith_groups", "hadiths", "hadith_numbers", "chains",
-    "chain_links", "transmissions", "data_versions",
+    "chain_links", "transmissions", "data_versions", "review_items",
 ]  # fmt: skip
 SEARCH_TABLES = ["matn_fts", "narrator_fts"]
 MAX_STATEMENT_BYTES = 90_000  # D1 allows 100 KB per statement
@@ -345,7 +345,9 @@ def build(raw: Path, out: Path, label: str) -> Report:
     # --- Validate (SPEC §8 step 5) -----------------------------------------------------
     validate(con, report)
     report.warnings = route_warnings
-    report.counts = {t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in CORE_TABLES}
+    report.counts = {
+        t: con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in CORE_TABLES if t != "review_items"
+    }
     total_mentions, resolved = con.execute(
         "SELECT COUNT(*), SUM(narrator_id IS NOT NULL) FROM chain_links WHERE position > 0 AND mention_start IS NOT NULL"
     ).fetchone()
@@ -401,8 +403,24 @@ def build(raw: Path, out: Path, label: str) -> Report:
     sql_dir.mkdir(exist_ok=True)
     for f in sql_dir.glob("*.sql"):
         f.unlink()
-    emit(con, CORE_TABLES, sql_dir, "core")
+    emit(con, [t for t in CORE_TABLES if t != "review_items"], sql_dir, "core")
     emit(scon, SEARCH_TABLES, sql_dir, "search")
+
+    # Companions' honorifics are set in review, never by string matching (principle 8).
+    for (nid,) in con.execute("SELECT id FROM narrators WHERE role = 'companion' AND honorific_ar IS NULL ORDER BY id"):
+        review.add("honorific_missing", narrator_id=nid)
+    # The review queue goes into the database for the editorial tools (SPEC §14).
+    entity_of = {"kg_hadith_id": None, "ref": "hadith", "narrator_id": "narrator"}
+    for item in review.items:
+        ent = next(((entity_of[k], item[k]) for k in ("ref", "narrator_id") if k in item), (None, None))
+        detail = {k: v for k, v in item.items() if k != "kind"}
+        con.execute(
+            "INSERT INTO review_items (kind, entity, entity_id, detail) VALUES (?, ?, ?, ?)",
+            (item["kind"], ent[0], ent[1], json.dumps(detail, ensure_ascii=False)),
+        )
+    con.commit()
+    emit(con, ["review_items"], sql_dir, "review")
+    report.counts["review_items"] = len(review.items)
 
     (out / "validation-report.json").write_text(json.dumps(report.__dict__, ensure_ascii=False, indent=2), "utf-8")
     with (out / "review-queue.jsonl").open("w", encoding="utf-8") as f:

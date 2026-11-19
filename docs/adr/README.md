@@ -17,3 +17,4 @@ append-only: supersede a record with a new one rather than rewriting it.
 | [0010](0010-ci-github-actions.md) | CI on GitHub Actions with Wrangler previews | Proposed |
 | [0011](0011-reference-numbering-and-kg-placeholders.md) | Reference numbering by alignment; dataset placeholders become link kinds | Accepted |
 | [0012](0012-loaders-instead-of-tanstack-query.md) | React Router loaders instead of TanStack Query and Zustand | Accepted |
+| [0013](0013-editorial-workflow.md) | Editorial workflow: proposals, separation of duties, Access verified twice | Accepted |
