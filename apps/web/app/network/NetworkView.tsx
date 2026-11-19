@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import Sigma from 'sigma';
 import { hijri } from '~/lib/format';
+import { useI18n } from '~/i18n';
 
 const CAP = 500;
 
@@ -64,6 +65,7 @@ export default function NetworkView({
   layoutMode: 'fa2' | 'tabaqa';
   onLayoutMode: (m: 'fa2' | 'tabaqa') => void;
 }) {
+  const { t, to, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const graphRef = useRef<Graph<NodeAttrs> | null>(null);
   const sigmaRef = useRef<Sigma<NodeAttrs> | null>(null);
@@ -234,14 +236,14 @@ export default function NetworkView({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <div className="inline-flex rounded-md border border-hairline" role="radiogroup" aria-label="تخطيط الشبكة">
+        <div className="inline-flex rounded-md border border-hairline" role="radiogroup" aria-label={t('تخطيط الشبكة')}>
           <button
             role="radio"
             aria-checked={layoutMode === 'fa2'}
             className={`seg${layoutMode === 'fa2' ? ' seg-on' : ''}`}
             onClick={() => onLayoutMode('fa2')}
           >
-            قوى
+            {t('قوى')}
           </button>
           <button
             role="radio"
@@ -249,25 +251,33 @@ export default function NetworkView({
             className={`seg${layoutMode === 'tabaqa' ? ' seg-on' : ''}`}
             onClick={() => onLayoutMode('tabaqa')}
           >
-            حسب الطبقة
+            {t('حسب الطبقة')}
           </button>
         </div>
         <span className="text-ink-muted" role="status">
-          {busy ? 'جارٍ التحميل…' : `${size} راويًا${capped ? ' — بلغ الحد الأقصى (500)' : ''}`}
+          {busy ? t('جارٍ التحميل…') : `${t('{n} راويًا', { n: size })}${capped ? t(' — بلغ الحد الأقصى (500)') : ''}`}
         </span>
       </div>
-      <div ref={box} className="network-canvas" aria-label={`شبكة شيوخ ${centerName} وتلاميذه`} role="img" />
+      <div
+        ref={box}
+        className="network-canvas"
+        aria-label={t('شبكة شيوخ {name} وتلاميذه', { name: centerName })}
+        role="img"
+      />
       <p className="text-xs text-ink-muted">
-        حجم الدائرة بعدد الروابط، ولونها بالطبقة، وسُمك الخط بعدد أحاديث الصحيح التي يرد فيها الرابط. القوائم النصية
-        للشيوخ والتلاميذ أعلى الصفحة.
+        {t(
+          t(
+            'حجم الدائرة بعدد الروابط، ولونها بالطبقة، وسُمك الخط بعدد أحاديث الصحيح التي يرد فيها الرابط. القوائم النصية للشيوخ والتلاميذ أعلى الصفحة.',
+          ),
+        )}
       </p>
       {sel && selected && (
-        <div className="summary space-y-2" role="region" aria-label="الراوي المختار">
+        <div className="summary space-y-2" role="region" aria-label={t('الراوي المختار')}>
           <div className="font-semibold">{sel.label}</div>
           <div className="text-sm text-ink-muted">
             {[
-              hijri(sel.deathAh, null, 'ت ') ?? 'سنة الوفاة غير متوفرة',
-              sel.tabaqa != null ? `الطبقة ${sel.tabaqa}` : null,
+              hijri(sel.deathAh, null, t('ت '), locale) ?? t('سنة الوفاة غير متوفرة'),
+              sel.tabaqa != null ? t('الطبقة {n}', { n: sel.tabaqa }) : null,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -278,36 +288,37 @@ export default function NetworkView({
               onClick={() => void expand(selected)}
               disabled={expanded.current.has(selected) || size >= CAP}
             >
-              {expanded.current.has(selected) ? 'موسَّع' : 'توسيع شيوخه وتلاميذه'}
+              {expanded.current.has(selected) ? t('موسَّع') : t('توسيع شيوخه وتلاميذه')}
             </button>
             {selected !== anchor && (
               <button className="btn text-sm" onClick={() => setAnchor(selected)}>
-                اجعله نقطة المقارنة
+                {t('اجعله نقطة المقارنة')}
               </button>
             )}
-            <Link className="btn text-sm" to={`/narrator/${selected}`}>
-              صفحة الراوي
+            <Link className="btn text-sm" to={to(`/narrator/${selected}`)}>
+              {t('صفحة الراوي')}
             </Link>
           </div>
           {selected !== anchor && (
             <div className="text-sm">
               <div className="font-semibold">
-                مواضع يتجاور فيها {anchorName} و{sel.label} في الإسناد
+                مواضع يتجاور فيها {anchorName} {t('و')}
+                {sel.label} في الإسناد
               </div>
               {!shared ? (
-                <span className="text-ink-muted">جارٍ البحث…</span>
+                <span className="text-ink-muted">{t('جارٍ البحث…')}</span>
               ) : shared.numbers.length === 0 ? (
-                <span className="text-ink-muted">لا مواضع متجاورة في الصحيح المحمَّل.</span>
+                <span className="text-ink-muted">{t('لا مواضع متجاورة في الصحيح المحمَّل.')}</span>
               ) : (
                 <ul className="mt-1 flex flex-wrap gap-2">
                   {shared.numbers.map((n) => (
                     <li key={n}>
-                      <Link className="chip tabular-nums" to={`/bukhari/${n}`}>
+                      <Link className="chip tabular-nums" to={to(`/bukhari/${n}`)}>
                         {n}
                       </Link>
                     </li>
                   ))}
-                  {shared.nextCursor && <li className="text-ink-muted">وغيرها…</li>}
+                  {shared.nextCursor && <li className="text-ink-muted">{t('وغيرها…')}</li>}
                 </ul>
               )}
             </div>

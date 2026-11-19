@@ -1,15 +1,22 @@
 import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
+/** Public pages, mounted at / (Arabic) and again under /en (English) with distinct ids. */
+const PAGES: [string, string][] = [
+  ['bukhari', 'routes/bukhari.tsx'],
+  ['bukhari/kitab/:n', 'routes/kitab.tsx'],
+  ['bukhari/:number', 'routes/hadith.tsx'],
+  ['narrator/:slug', 'routes/narrator.tsx'],
+  ['compare/:a/:b', 'routes/compare.tsx'],
+  ['search', 'routes/search.tsx'],
+  ['methodology', 'routes/methodology.tsx'],
+  ['sources', 'routes/sources.tsx'],
+];
+
 export default [
   index('routes/home.tsx'),
-  route('bukhari', 'routes/bukhari.tsx'),
-  route('bukhari/kitab/:n', 'routes/kitab.tsx'),
-  route('bukhari/:number', 'routes/hadith.tsx'),
-  route('narrator/:slug', 'routes/narrator.tsx'),
-  route('compare/:a/:b', 'routes/compare.tsx'),
-  route('search', 'routes/search.tsx'),
-  route('methodology', 'routes/methodology.tsx'),
-  route('sources', 'routes/sources.tsx'),
+  ...PAGES.map(([path, file]) => route(path, file)),
+  route('en', 'routes/home.tsx', { id: 'en-home' }),
+  ...PAGES.map(([path, file]) => route(`en/${path}`, file, { id: `en-${path}` })),
   route('robots.txt', 'routes/robots.ts'),
   route('sitemap.xml', 'routes/sitemap.ts', { id: 'sitemap-index' }),
   route('sitemap/:part.xml', 'routes/sitemap.ts', { id: 'sitemap-part' }),

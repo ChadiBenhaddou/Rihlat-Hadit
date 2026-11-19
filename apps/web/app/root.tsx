@@ -5,8 +5,10 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useRouteLoaderData,
 } from 'react-router';
+import { basePath, localize, useI18n } from './i18n';
 import amiriRegular from '@fontsource/amiri/files/amiri-arabic-400-normal.woff2?url';
 import type { Route } from './+types/root';
 import { cloudflareContext, nonceContext } from './context';
@@ -24,38 +26,61 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const nonce = useRouteLoaderData<typeof loader>('root')?.nonce;
+  const { locale, dir, t, to } = useI18n();
+  const { pathname, search } = useLocation();
+  const base = basePath(pathname);
+  const admin = base.startsWith('/admin');
+  const other = locale === 'ar' ? 'en' : 'ar';
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={locale} dir={dir}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
         <Meta />
         <Links />
+        {!admin && (
+          <>
+            {/* hreflang for both UIs (SPEC §15). */}
+            <link rel="alternate" hrefLang="ar" href={base} />
+            <link rel="alternate" hrefLang="en" href={localize('en', base)} />
+            <link rel="alternate" hrefLang="x-default" href={base} />
+          </>
+        )}
       </head>
       <body>
         <a href="#main" className="skip-link">
-          تخطَّ إلى المحتوى
+          {t('تخطَّ إلى المحتوى')}
         </a>
         <header className="border-b border-hairline bg-surface">
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-            <a href="/" className="font-ui text-lg font-semibold text-ink">
-              رحلة الحديث <span className="text-sm font-normal text-ink-muted">في صحيح البخاري</span>
+            <a href={to('/')} className="font-ui text-lg font-semibold text-ink">
+              {t('رحلة الحديث')} <span className="text-sm font-normal text-ink-muted">{t('في صحيح البخاري')}</span>
             </a>
-            <nav aria-label="الأقسام" className="flex flex-wrap gap-4 text-sm">
-              <a className="hover:underline" href="/bukhari">
-                الكتب
+            <nav aria-label={t('الأقسام')} className="flex flex-wrap gap-4 text-sm">
+              <a className="hover:underline" href={to('/bukhari')}>
+                {t('الكتب')}
               </a>
-              <a className="hover:underline" href="/search">
-                البحث
+              <a className="hover:underline" href={to('/search')}>
+                {t('البحث')}
               </a>
-              <a className="hover:underline" href="/methodology">
-                المنهجية
+              <a className="hover:underline" href={to('/methodology')}>
+                {t('المنهجية')}
               </a>
-              <a className="hover:underline" href="/sources">
-                المصادر
+              <a className="hover:underline" href={to('/sources')}>
+                {t('المصادر')}
               </a>
             </nav>
+            {!admin && (
+              <a
+                className="ms-auto text-sm hover:underline"
+                href={localize(other, base) + search}
+                hrefLang={other}
+                lang={other}
+              >
+                {other === 'en' ? 'English' : 'العربية'}
+              </a>
+            )}
           </div>
         </header>
         {children}
@@ -71,14 +96,15 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let title = 'حدث خطأ';
-  let details = 'تعذّر عرض هذه الصفحة.';
+  const { t } = useI18n();
+  let title = t('حدث خطأ');
+  let details = t('تعذّر عرض هذه الصفحة.');
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
-      title = 'الصفحة غير موجودة';
-      details = 'لم نجد الصفحة المطلوبة.';
+      title = t('الصفحة غير موجودة');
+      details = t('لم نجد الصفحة المطلوبة.');
     }
   } else if (import.meta.env.DEV && error instanceof Error) {
     details = error.message;

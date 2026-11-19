@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { localeOf, useI18n } from '~/i18n';
 import { dataContext } from '~/lib/data.server';
 import type { Route } from './+types/methodology';
 
@@ -24,14 +25,22 @@ export async function loader({ context }: Route.LoaderArgs) {
   return { stats: row, dataVersion };
 }
 
-export function meta(_: Route.MetaArgs) {
+export function meta({ location }: Route.MetaArgs) {
+  const en = localeOf(location.pathname) === 'en';
   return [
-    { title: 'منهجية المنصة | رحلة الحديث' },
-    { name: 'description', content: 'كيف تُجمع بيانات المنصة وتُراجَع وتُعرض، وما معنى كل مؤشر.' },
+    { title: en ? 'Methodology | Rihlat al-Hadith' : 'منهجية المنصة | رحلة الحديث' },
+    {
+      name: 'description',
+      content: en
+        ? 'How the platform’s data is sourced, reviewed and shown, and what each indicator means.'
+        : 'كيف تُجمع بيانات المنصة وتُراجَع وتُعرض، وما معنى كل مؤشر.',
+    },
   ];
 }
 
 export default function Methodology({ loaderData }: Route.ComponentProps) {
+  const { locale } = useI18n();
+  if (locale === 'en') return <MethodologyEn stats={loaderData.stats} dataVersion={loaderData.dataVersion} />;
   const s = loaderData.stats;
   return (
     <main id="main" className="prose-ar mx-auto max-w-3xl px-4 py-8">
@@ -103,14 +112,17 @@ export default function Methodology({ loaderData }: Route.ComponentProps) {
       <p>كل مؤشر يذكر مدخلاته وصيغة حسابه ونطاقه «ضمن صحيح البخاري كما هو محمَّل هنا»، ولا يُجمع في درجة واحدة.</p>
       <ul>
         <li>
-          <strong>المعاصرة:</strong> سنة وفاة الشيخ ناقص سنة مولد التلميذ، حين يذكر المصدر التاريخين. إن لم يُذكر أحدهما فالنتيجة «غير متوفر»،
-          وإن جاء الفرق سالبًا قيل «لا تداخل ظاهر بحسب التواريخ المتاحة»، وهو وصف للتواريخ المسجّلة لا حكم على اللقاء.
+          <strong>المعاصرة:</strong> سنة وفاة الشيخ ناقص سنة مولد التلميذ، حين يذكر المصدر التاريخين. إن لم يُذكر أحدهما
+          فالنتيجة «غير متوفر»، وإن جاء الفرق سالبًا قيل «لا تداخل ظاهر بحسب التواريخ المتاحة»، وهو وصف للتواريخ المسجّلة
+          لا حكم على اللقاء.
         </li>
         <li>
-          <strong>البلد المشترك:</strong> المدن المسجّلة للشيخ والتلميذ معًا (إقامة أو وفاة). غياب بلد مشترك مسجّل لا يدل على شيء.
+          <strong>البلد المشترك:</strong> المدن المسجّلة للشيخ والتلميذ معًا (إقامة أو وفاة). غياب بلد مشترك مسجّل لا يدل
+          على شيء.
         </li>
         <li>
-          <strong>طول الإسناد:</strong> عدد الرواة بين البخاري والنبي ﷺ أو آخر راوٍ مذكور. الطرق المعلّقة لا تُقارَن في الطول لأنها تُسقط رواة.
+          <strong>طول الإسناد:</strong> عدد الرواة بين البخاري والنبي ﷺ أو آخر راوٍ مذكور. الطرق المعلّقة لا تُقارَن في
+          الطول لأنها تُسقط رواة.
         </li>
         <li>
           <strong>الانقطاع والتعليق:</strong> الروابط المعلّقة أو المنقطعة والأسماء المبهمة كما في البيانات.
@@ -130,6 +142,130 @@ export default function Methodology({ loaderData }: Route.ComponentProps) {
       <h2>الإبلاغ عن خطأ</h2>
       <p>في كل صفحة حديث وراوٍ زر «الإبلاغ عن خطأ». تصل البلاغات إلى قائمة المراجعة، ولا يُعدَّل شيء إلا بمراجعة محرر.</p>
       <p className="text-sm text-ink-muted">إصدار البيانات: {loaderData.dataVersion}</p>
+    </main>
+  );
+}
+
+function MethodologyEn({
+  stats: s,
+  dataVersion,
+}: {
+  stats: Route.ComponentProps['loaderData']['stats'];
+  dataVersion: string;
+}) {
+  return (
+    <main id="main" className="prose-ar mx-auto max-w-3xl px-4 py-8">
+      <h1>Methodology</h1>
+      <p>
+        This platform is a research tool first. It never grades a hadith as authentic or weak, and a connected line in a
+        graph is not evidence of authenticity. It shows the statements of named scholars with their sources; anything it
+        computes is labelled an indicator for the researcher, never a ruling.
+      </p>
+      <h2>Where the data comes from</h2>
+      <ul>
+        <li>
+          <strong>Numbering, books and chapters:</strong> the text of Sahih al-Bukhari in the Dar Tawq al-Najat edition,
+          with Muhammad Fuad Abd al-Baqi’s numbering, from the OpenITI corpus.
+        </li>
+        <li>
+          <strong>Vocalized hadith text, chains, narrators and critics’ statements:</strong> the «الجامع» Hadith
+          Knowledge Graph. It is an intermediate dataset that does not name its original source, so every fact resting
+          on it alone carries the label “Secondary source” until an editor adds a citation to a primary source.
+        </li>
+        <li>
+          Each source and its licence is listed on the <Link to="/en/sources">sources page</Link>.
+        </li>
+      </ul>
+      <h2>How the sources were joined</h2>
+      <p>
+        Each entry of the knowledge graph was matched to its reference number by comparing the two texts, weighting the
+        words of the isnad because al-Bukhari repeats one matn under different chains, and then by the order of entries
+        in the book. Where the first narrators of the isnad differ between the two texts, the entry was not matched; it
+        went to review rather than being shown wrongly.
+      </p>
+      {s && (
+        <p>
+          Loaded so far: {s.entries} entries, {s.withChains} with an isnad graph, {s.suspended} suspended routes,{' '}
+          {s.gaps} broken links, {s.narrators} narrators and {s.gradings} critics’ statements. Reference numbers whose
+          text is in neither source are not shown, and gaps are never filled from memory.
+        </p>
+      )}
+      <h2>Review status</h2>
+      <ul>
+        <li>
+          <span className="badge">Extracted automatically — not reviewed</span>: produced by the pipeline; no editor has
+          checked it yet.
+        </li>
+        <li>
+          <span className="badge">Secondary source</span>: rests on an intermediate dataset, not on an edited primary
+          source.
+        </li>
+        <li>
+          Every fact carries a [src] marker that opens its source: the work or dataset, the edition, the locator and the
+          licence.
+        </li>
+        <li>What the sources do not say is shown as “not available” and never guessed.</li>
+      </ul>
+      <h2>Drawing the isnad</h2>
+      <ul>
+        <li>Transmission flows from top to bottom: the Prophet ﷺ at the top, al-Bukhari at the bottom.</li>
+        <li>A narrator through whom several routes pass appears once, so you can see where routes converge.</li>
+        <li>
+          Link kind is shown by line style, never by colour alone: solid for connected, dashed for uncertain, dotted and
+          labelled for a suspended (muʿallaq) or broken link.
+        </li>
+        <li>
+          The phrase on each link is the wording that ends the text just before the narrator’s name; if that text does
+          not end in a phrase of transmission, none is shown.
+        </li>
+        <li>
+          An unnamed narrator (such as «رجل», “a man”) is drawn as a separate node every time; unnamed narrators are
+          never merged.
+        </li>
+        <li>
+          There are no images or depictions of the Prophet ﷺ, the Companions or any narrator: nodes are text only.
+        </li>
+      </ul>
+      <h2>Indicators for the researcher</h2>
+      <p>
+        Each indicator states its inputs, its formula and its scope, “within Sahih al-Bukhari as loaded here”, and none
+        is combined into a score.
+      </p>
+      <ul>
+        <li>
+          <strong>Contemporaneity:</strong> the teacher’s death year minus the student’s birth year, when the source
+          gives both. If either is missing the result is “not available”; a negative difference reads “no apparent
+          overlap by the available dates”, a description of the recorded dates, not a ruling on whether they met.
+        </li>
+        <li>
+          <strong>Shared places:</strong> cities recorded for both teacher and student (residence or death). No shared
+          city recorded proves nothing.
+        </li>
+        <li>
+          <strong>Chain length:</strong> narrators between al-Bukhari and the Prophet ﷺ or the last named narrator.
+          Suspended routes are not compared, because they omit narrators.
+        </li>
+        <li>
+          <strong>Breaks and suspensions:</strong> suspended or broken links and unnamed narrators, as in the data.
+        </li>
+        <li>
+          <strong>Common link (madār):</strong> the narrator nearest al-Bukhari through whom every shown route passes.
+        </li>
+        <li>
+          <strong>Narrators per layer:</strong> distinct narrators in each layer across the routes, counting from the
+          source.
+        </li>
+      </ul>
+      <p>
+        An indicator for «عن» (ʿan) from a narrator described with tadlīs is not shown yet: it first needs the scholars’
+        discussion of how ʿanʿana is read in the Sahih, presented from its sources and reviewed.
+      </p>
+      <h2>Reporting an error</h2>
+      <p>
+        Every hadith and narrator page has a “Report an error” button. Reports reach the review queue, and nothing
+        changes without an editor’s review.
+      </p>
+      <p className="text-sm text-ink-muted">Data version: {dataVersion}</p>
     </main>
   );
 }

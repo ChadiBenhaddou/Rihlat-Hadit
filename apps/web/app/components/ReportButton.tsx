@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { useEffect, useRef, useState } from 'react';
 import { useRouteLoaderData } from 'react-router';
+import { useI18n } from '~/i18n';
 
 declare global {
   interface Window {
@@ -38,6 +39,7 @@ export function ReportButton({
   entityId: number;
   label: string;
 }) {
+  const { t } = useI18n();
   const root = useRouteLoaderData('root') as { turnstileSiteKey?: string } | undefined;
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function ReportButton({
           language: 'ar',
         });
       })
-      .catch(() => live && setError('تعذّر تحميل التحقق من أنك لست برنامجًا آليًا.'));
+      .catch(() => live && setError(t('تعذّر تحميل التحقق من أنك لست برنامجًا آليًا.')));
     return () => {
       live = false;
       if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
@@ -88,8 +90,8 @@ export function ReportButton({
       setState('error');
       setError(
         res?.status === 429
-          ? 'بلاغات كثيرة من هذا الجهاز، حاول بعد دقيقة.'
-          : 'تعذّر إرسال البلاغ. تأكد من كتابة عشرة أحرف على الأقل.',
+          ? t('بلاغات كثيرة من هذا الجهاز، حاول بعد دقيقة.')
+          : t('تعذّر إرسال البلاغ. تأكد من كتابة عشرة أحرف على الأقل.'),
       );
     }
   }
@@ -102,17 +104,17 @@ export function ReportButton({
         if (o) setState('idle');
       }}
     >
-      <Dialog.Trigger className="btn text-sm">الإبلاغ عن خطأ</Dialog.Trigger>
+      <Dialog.Trigger className="btn text-sm">{t('الإبلاغ عن خطأ')}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="sheet-overlay" />
         <Dialog.Content className="dialog" aria-describedby="report-desc">
-          <Dialog.Title className="text-lg font-semibold">الإبلاغ عن خطأ</Dialog.Title>
+          <Dialog.Title className="text-lg font-semibold">{t('الإبلاغ عن خطأ')}</Dialog.Title>
           <p id="report-desc" className="text-sm text-ink-muted">
             {label}. يصل البلاغ إلى قائمة المراجعة، ولا يُعدَّل شيء إلا بمراجعة محرر.
           </p>
           {state === 'sent' ? (
             <p role="status" className="mt-4">
-              شكرًا لك، وصل البلاغ.
+              {t('شكرًا لك، وصل البلاغ.')}
             </p>
           ) : (
             <form
@@ -123,7 +125,7 @@ export function ReportButton({
               }}
             >
               <label className="block text-sm">
-                ما الخطأ؟ اذكر المصدر إن أمكن.
+                {t('ما الخطأ؟ اذكر المصدر إن أمكن.')}
                 <textarea
                   name="message"
                   required
@@ -134,7 +136,7 @@ export function ReportButton({
                 />
               </label>
               <label className="block text-sm">
-                بريدك للتواصل (اختياري)
+                {t('بريدك للتواصل (اختياري)')}
                 <input
                   name="contact"
                   type="email"
@@ -151,9 +153,9 @@ export function ReportButton({
               )}
               <div className="flex gap-2">
                 <button type="submit" className="btn-primary" disabled={!token || state === 'sending'}>
-                  {state === 'sending' ? 'جارٍ الإرسال…' : 'إرسال'}
+                  {state === 'sending' ? t('جارٍ الإرسال…') : t('إرسال')}
                 </button>
-                <Dialog.Close className="btn">إلغاء</Dialog.Close>
+                <Dialog.Close className="btn">{t('إلغاء')}</Dialog.Close>
               </div>
             </form>
           )}

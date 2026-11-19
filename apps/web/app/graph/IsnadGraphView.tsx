@@ -10,6 +10,7 @@ import { select } from 'd3-selection';
 import { zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom';
 import 'd3-transition';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '~/i18n';
 import { hijri } from '~/lib/format';
 import { layoutGraph, toTimeline, type Layout, type Point, type Timeline } from './layout';
 
@@ -95,6 +96,7 @@ export function IsnadGraphView({
   selectedEdge = null,
   growDelay,
 }: Props) {
+  const { t, locale } = useI18n();
   const [base, setBase] = useState<Layout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -153,15 +155,16 @@ export function IsnadGraphView({
     const maxY = Math.max(...boxes.map((b) => b.y + b.height));
     const { width, height } = svgRef.current.getBoundingClientRect();
     const k = Math.max(0.6, Math.min(1.4, width / (maxX - minX + 240), height / (maxY - minY + 200)));
-    const t = zoomIdentity
+    const target = zoomIdentity
       .translate(width / 2 - ((minX + maxX) / 2) * k, height / 2 - ((minY + maxY) / 2) * k)
       .scale(k);
     const svg = select(svgRef.current);
-    if (reducedMotion) svg.call(zoomRef.current.transform, t);
-    else svg.transition().duration(500).call(zoomRef.current.transform, t);
+    if (reducedMotion) svg.call(zoomRef.current.transform, target);
+    else svg.transition().duration(500).call(zoomRef.current.transform, target);
   }, [focus.activeNode, focus.activeEdge, layout, reducedMotion]);
 
-  if (error) return <p className="p-4 text-ink-muted">تعذّر رسم المخطط. القائمة النصية أدناه تعرض الإسناد نفسه.</p>;
+  if (error)
+    return <p className="p-4 text-ink-muted">{t('تعذّر رسم المخطط. القائمة النصية أدناه تعرض الإسناد نفسه.')}</p>;
 
   const dimmed = (id: string) => focus.visibleNodes != null && !focus.visibleNodes.has(id);
   const order = [...tabOrder, ...graph.nodes.map((n) => n.id).filter((id) => !tabOrder.includes(id))];
@@ -170,8 +173,8 @@ export function IsnadGraphView({
 
   return (
     <div className="relative h-full min-h-[24rem] w-full">
-      {!layout && <div className="absolute inset-0 grid place-items-center text-ink-muted">جارٍ رسم المخطط…</div>}
-      <svg ref={svgRef} className="h-full w-full touch-none select-none" role="group" aria-label="مخطط الإسناد">
+      {!layout && <div className="absolute inset-0 grid place-items-center text-ink-muted">{t('جارٍ رسم المخطط…')}</div>}
+      <svg ref={svgRef} className="h-full w-full touch-none select-none" role="group" aria-label={t('مخطط الإسناد')}>
         <defs>
           <marker
             id="arrow"
@@ -188,11 +191,11 @@ export function IsnadGraphView({
         <g ref={gRef}>
           {timeline && (
             <g className="timeline-axis" aria-hidden>
-              {timeline.ticks.map((t) => (
-                <g key={t.year} transform={`translate(0,${t.y})`}>
+              {timeline.ticks.map((tick) => (
+                <g key={tick.year} transform={`translate(0,${tick.y})`}>
                   <line x1={0} x2={layout!.width} stroke="var(--color-hairline)" />
                   <text x={layout!.width - 4} y={-4} textAnchor="end" className="graph-meta">
-                    {t.year} هـ
+                    {tick.year} {locale === 'en' ? 'AH' : 'هـ'}
                   </text>
                 </g>
               ))}
@@ -208,7 +211,7 @@ export function IsnadGraphView({
             const dash =
               e.kind === 'uncertain' ? '8 6' : e.kind === 'suspended' || e.kind === 'gap' ? '1 7' : undefined;
             const mid = midpoint(le.points);
-            const label = [e.termAr, KIND_AR[e.kind]].filter(Boolean).join(' · ');
+            const label = [e.termAr, t(KIND_AR[e.kind])].filter(Boolean).join(' · ');
             const color = hot ? 'var(--color-accent)' : (edgeColor?.(le.key) ?? 'var(--color-line)');
             const d = polyline(le.points);
             return (
@@ -283,10 +286,11 @@ export function IsnadGraphView({
                 n.role === 'prophet'
                   ? ''
                   : n.role === 'unresolved'
-                    ? 'اسم مبهم'
+                    ? t('اسم مبهم')
                     : undated
                       ? '' // the timeline never shows a year the sources do not give
-                      : (hijri(n.deathAh, n.deathAhMax, 'ت ')?.replace(/ \(.*\)$/, '') ?? 'سنة الوفاة غير متوفرة');
+                      : (hijri(n.deathAh, n.deathAhMax, 'ت ', locale)?.replace(/ \(.*\)$/, '') ??
+                        t('سنة الوفاة غير متوفرة'));
               const life = timeline?.lifespans.get(id);
               return (
                 <g
@@ -298,7 +302,7 @@ export function IsnadGraphView({
                   tabIndex={0}
                   role="button"
                   aria-pressed={sel}
-                  aria-label={`${labelOf(n)}${meta ? `، ${meta}` : undated ? '، سنة الوفاة غير متوفرة' : ''}`}
+                  aria-label={`${labelOf(n)}${meta ? `، ${meta}` : undated ? `، ${t('سنة الوفاة غير متوفرة')}` : ''}`}
                   onMouseEnter={() => onHover(id)}
                   onMouseLeave={() => onHover(null)}
                   onFocus={() => onHover(id)}
@@ -311,7 +315,7 @@ export function IsnadGraphView({
                     }
                   }}
                 >
-                  {undated && <title>سنة الوفاة غير متوفرة</title>}
+                  {undated && <title>{t('سنة الوفاة غير متوفرة')}</title>}
                   {life && (
                     <rect
                       x={p.width / 2 - 1}
@@ -321,7 +325,7 @@ export function IsnadGraphView({
                       rx={1}
                       className="lifespan"
                     >
-                      <title>{`عاش نحو ${hijri(n.birthAh, null) ?? ''} – ${hijri(n.deathAh, n.deathAhMax) ?? ''}`}</title>
+                      <title>{`${t('عاش نحو')} ${hijri(n.birthAh, null, '', locale) ?? ''} – ${hijri(n.deathAh, n.deathAhMax, '', locale) ?? ''}`}</title>
                     </rect>
                   )}
                   {(ringIds.includes(id) || n.role === 'prophet') && (
@@ -365,12 +369,12 @@ export function IsnadGraphView({
                   )}
                   {ringIds.includes(id) && (
                     <text x={p.width / 2} y={-12} textAnchor="middle" className="graph-flag">
-                      المدار
+                      {t('المدار')}
                     </text>
                   )}
                   {markIds.includes(id) && !ringIds.includes(id) && (
                     <text x={p.width / 2} y={p.height + 14} textAnchor="middle" className="graph-flag">
-                      تفرّع
+                      {t('تفرّع')}
                     </text>
                   )}
                 </g>

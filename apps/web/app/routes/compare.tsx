@@ -11,6 +11,7 @@ import { labelOf } from '~/graph/IsnadGraphView';
 import { dataContext, notFound } from '~/lib/data.server';
 import { getCompare } from '../../server/data/compare';
 import type { Route } from './+types/compare';
+import { localeOf, translate, useI18n } from '~/i18n';
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   const a = Number(params.a);
@@ -22,9 +23,16 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return { cmp };
 }
 
-export function meta({ loaderData: data }: Route.MetaArgs) {
+export function meta({ loaderData: data, location }: Route.MetaArgs) {
   return [
-    { title: data ? `مقارنة صحيح البخاري ${data.cmp.a.number} و${data.cmp.b.number} | رحلة الحديث` : 'غير موجود' },
+    {
+      title: data
+        ? translate(localeOf(location.pathname), 'مقارنة صحيح البخاري {a} و{b} | رحلة الحديث', {
+            a: data.cmp.a.number,
+            b: data.cmp.b.number,
+          })
+        : 'غير موجود',
+    },
   ];
 }
 
@@ -34,6 +42,7 @@ function Chain({ h, routeId }: { h: HadithResponse; routeId: number | undefined 
 }
 
 export default function Compare({ loaderData }: Route.ComponentProps) {
+  const { t, to } = useI18n();
   const { a, b, diff } = loaderData.cmp;
   const [params, setParams] = useSearchParams();
   const ca = Chain({ h: a, routeId: Number(params.get('ra')) || undefined });
@@ -54,7 +63,7 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
     if (!id) return <span className="text-ink-muted">—</span>;
     const n = nodes.get(id)!;
     return n.slug ? (
-      <Link className="link" to={`/narrator/${n.slug}`}>
+      <Link className="link" to={to(`/narrator/${n.slug}`)}>
         {labelOf(n)}
       </Link>
     ) : (
@@ -66,12 +75,12 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
 
   return (
     <main id="main" className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold">
-        المقارنة بين روايتين: {a.number} و{b.number}
-      </h1>
+      <h1 className="text-2xl font-semibold">{t('المقارنة بين روايتين: {a} و{b}', { a: a.number, b: b.number })}</h1>
       <p className="text-sm text-ink-muted">
-        الفروق على الألفاظ بعد تجاهل التشكيل وصور الهمز، والنص المعروض كما في مصدره. زيادات: {counts.added} · نقص:{' '}
-        {counts.omitted} · تغيّر: {counts.changed}
+        {t(
+          'الفروق على الألفاظ بعد تجاهل التشكيل وصور الهمز، والنص المعروض كما في مصدره. زيادات: {a} · نقص: {o} · تغيّر: {c}',
+          { a: counts.added, o: counts.omitted, c: counts.changed },
+        )}
       </p>
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -83,25 +92,25 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
         ).map(([h, side]) => (
           <article key={side} className="pane space-y-2">
             <h2 className="font-semibold">
-              <Link className="link" to={`/bukhari/${h.number}`}>
-                صحيح البخاري {h.number}
+              <Link className="link" to={to(`/bukhari/${h.number}`)}>
+                {t('صحيح البخاري {n}', { n: h.number })}
               </Link>{' '}
               <Cite ids={[h.citationId]} citations={h.graph.citations} sources={h.sources} />
             </h2>
             {h.chapter && <p className="text-sm text-ink-muted">{h.chapter.titleAr}</p>}
-            <p className="hadith-text">
+            <p className="hadith-text" lang="ar" dir="rtl">
               {diff.map((d, i) => {
                 if (side === 'a') {
                   if (d.op === 'same') return <span key={i}>{d.a} </span>;
                   if (d.op === 'omitted')
                     return (
-                      <del key={i} className="diff-del" title="ليس في الرواية الأخرى">
+                      <del key={i} className="diff-del" title={t('ليس في الرواية الأخرى')}>
                         {d.a}{' '}
                       </del>
                     );
                   if (d.op === 'changed')
                     return (
-                      <del key={i} className="diff-chg" title={`في الأخرى: ${d.b}`}>
+                      <del key={i} className="diff-chg" title={t('في الأخرى: {w}', { w: d.b })}>
                         {d.a}{' '}
                       </del>
                     );
@@ -110,13 +119,13 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
                 if (d.op === 'same') return <span key={i}>{d.b} </span>;
                 if (d.op === 'added')
                   return (
-                    <ins key={i} className="diff-add" title="ليس في الرواية الأخرى">
+                    <ins key={i} className="diff-add" title={t('ليس في الرواية الأخرى')}>
                       {d.b}{' '}
                     </ins>
                   );
                 if (d.op === 'changed')
                   return (
-                    <ins key={i} className="diff-chg" title={`في الأخرى: ${d.a}`}>
+                    <ins key={i} className="diff-chg" title={t('في الأخرى: {w}', { w: d.a })}>
                       {d.b}{' '}
                     </ins>
                   );
@@ -127,13 +136,14 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
         ))}
       </section>
       <p className="text-xs text-ink-muted">
-        <ins className="diff-add">مسطّر</ins>: زيادة في هذه الرواية · <del className="diff-del">مشطوب</del>: ليس في
-        الأخرى · المسطّر أو المشطوب المنقّط: لفظ تغيّر.
+        <ins className="diff-add">{t('مسطّر')}</ins>
+        {t(': زيادة في هذه الرواية ·')} <del className="diff-del">{t('مشطوب')}</del>
+        {t(': ليس في الأخرى · المسطّر أو المشطوب المنقّط: لفظ تغيّر.')}
       </p>
 
       <section className="pane space-y-3" aria-labelledby="chains-title">
         <h2 id="chains-title" className="font-semibold">
-          الإسنادان جنبًا إلى جنب، من المصدر إلى البخاري
+          {t('الإسنادان جنبًا إلى جنب، من المصدر إلى البخاري')}
         </h2>
         <div className="flex flex-wrap gap-4 text-sm">
           {(
@@ -144,12 +154,14 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
           ).map(([h, k, c]) =>
             h.graph.chains.length > 1 ? (
               <label key={k}>
-                <span className="me-1">طريق {h.number}</span>
+                <span className="me-1">
+                  {t('طريق')} {h.number}
+                </span>
                 <select className="select" value={c?.id} onChange={(e) => pick(k, e.target.value)}>
                   {h.graph.chains.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.routeNo}
-                      {x.isSuspended ? ' (معلّق)' : ''}
+                      {x.isSuspended ? t(' (معلّق)') : ''}
                     </option>
                   ))}
                 </select>
@@ -158,13 +170,17 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
           )}
         </div>
         {rows.length === 0 ? (
-          <p className="text-ink-muted">لا إسناد مستخرج لأحد الموضعين.</p>
+          <p className="text-ink-muted">{t('لا إسناد مستخرج لأحد الموضعين.')}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-ink-muted">
-                <th className="text-start font-normal">رقم {a.number}</th>
-                <th className="text-start font-normal">رقم {b.number}</th>
+                <th className="text-start font-normal">
+                  {t('رقم')} {a.number}
+                </th>
+                <th className="text-start font-normal">
+                  {t('رقم')} {b.number}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -177,7 +193,7 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
             </tbody>
           </table>
         )}
-        <p className="text-xs text-ink-muted">الصف المظلَّل راوٍ مشترك بين الطريقين.</p>
+        <p className="text-xs text-ink-muted">{t('الصف المظلَّل راوٍ مشترك بين الطريقين.')}</p>
       </section>
     </main>
   );

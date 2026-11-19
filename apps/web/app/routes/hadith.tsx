@@ -20,6 +20,7 @@ import { TERMINUS_AR } from '~/lib/format';
 import { getGroupGraph } from '../../server/data/graph';
 import { getHadith } from '../../server/data/hadith';
 import type { Route } from './+types/hadith';
+import { INDICATOR_EN, INDICATOR_SCOPE_EN, localeOf, translate, translateIndicator, useI18n } from '~/i18n';
 
 export async function loader({ params, context, request }: Route.LoaderArgs) {
   const n = Number(params.number);
@@ -35,13 +36,13 @@ export async function loader({ params, context, request }: Route.LoaderArgs) {
 
 const TASHKEEL = /[\u064B-\u0652\u0670]/g;
 
-export function meta({ loaderData: data }: Route.MetaArgs) {
+export function meta({ loaderData: data, location }: Route.MetaArgs) {
   if (!data) return [{ title: 'غير موجود — رحلة الحديث' }];
   const h = data.hadith;
   const opening = (h.matnAr ?? h.textAr).replace(TASHKEEL, '').replace(/\s+/g, ' ').trim();
   const words = opening.split(' ').slice(0, 6).join(' ');
   return [
-    { title: `صحيح البخاري ${h.number} — ${words}` },
+    { title: `${translate(localeOf(location.pathname), 'صحيح البخاري {n}', { n: h.number })} — ${words}` },
     { name: 'description', content: opening.slice(0, 160) },
     { tagName: 'link', rel: 'canonical', href: `/bukhari/${h.number}` },
   ];
@@ -77,6 +78,10 @@ function edgeKey(order: string[], i: number, dir: JourneyState['dir']): string {
 }
 
 export default function HadithPage({ loaderData }: Route.ComponentProps) {
+  const { t, to, dir } = useI18n();
+  // Arrows follow reading direction (SPEC §12): forward is ← in Arabic and → in English.
+  const [back, fwd] = dir === 'rtl' ? ['→', '←'] : ['←', '→'];
+  const [fwdKey, backKey] = dir === 'rtl' ? ['ArrowLeft', 'ArrowRight'] : ['ArrowRight', 'ArrowLeft'];
   const { hadith, group } = loaderData;
   const [params, setParams] = useSearchParams();
   const allView = params.get('view') === 'all' && group != null;
@@ -160,10 +165,10 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
       if (e.key === ' ') {
         e.preventDefault();
         setPlaying((p) => !p);
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === fwdKey) {
         e.preventDefault();
         goStep(step + 1);
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === backKey) {
         e.preventDefault();
         goStep(step - 1);
       } else if (e.key === 'Home') {
@@ -173,7 +178,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [journey.active, step, goStep]);
+  }, [journey.active, step, goStep, fwdKey, backKey]);
 
   const focus: GraphFocus = useMemo(() => {
     if (!journey.active) return { visibleNodes: null, visibleEdges: null, activeNode: null, activeEdge: null };
@@ -228,26 +233,26 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
   const textSource = hadith.sources.find((s) =>
     hadith.graph.citations.some((c) => c.id === hadith.citationId && c.sourceSlug === s.slug),
   );
-  const announce = journey.active ? stepText(order, step, journey.dir, nodeById, edgeByKey) : '';
+  const announce = journey.active ? stepText(order, step, journey.dir, nodeById, edgeByKey, t) : '';
   const done = journey.active && step >= lastStep && order.length > 0;
   const chain = g.chains.find((c) => c.id === journey.routeId);
 
   const narratorPane = selected ? (
     <NarratorCard node={selected} dataVersion={hadith.dataVersion} />
   ) : (
-    <p className="text-ink-muted">اختر راويًا من المخطط أو من نص الإسناد لعرض ترجمته.</p>
+    <p className="text-ink-muted">{t('اختر راويًا من المخطط أو من نص الإسناد لعرض ترجمته.')}</p>
   );
 
   return (
     <main id="main" className="mx-auto max-w-[1600px] px-4 py-4">
-      <nav aria-label="مسار التصفح" className="mb-3 text-sm text-ink-muted">
-        <Link className="link" to="/bukhari">
-          صحيح البخاري
+      <nav aria-label={t('مسار التصفح')} className="mb-3 text-sm text-ink-muted">
+        <Link className="link" to={to('/bukhari')}>
+          {t('صحيح البخاري')}
         </Link>
         {hadith.book && (
           <>
             {' / '}
-            <Link className="link" to={`/bukhari/kitab/${hadith.book.number}`}>
+            <Link className="link" to={to(`/bukhari/kitab/${hadith.book.number}`)}>
               {hadith.book.titleAr}
             </Link>
           </>
@@ -261,14 +266,14 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
         <section aria-labelledby="hadith-title" className="pane space-y-3">
           <header className="space-y-1">
             <h1 id="hadith-title" className="text-xl font-semibold">
-              صحيح البخاري {hadith.number}
+              {t('صحيح البخاري {n}', { n: hadith.number })}
             </h1>
             {hadith.chapter && <p className="text-ink-muted">{hadith.chapter.titleAr}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <ReviewBadge status={hadith.reviewStatus} sourceKind={textSource?.kind} />
               <Cite ids={[hadith.citationId]} citations={g.citations} sources={hadith.sources} />
             </div>
-            {!hadith.vocalized && <p className="text-sm text-ink-muted">هذا النص غير مشكول في مصدره المحمَّل.</p>}
+            {!hadith.vocalized && <p className="text-sm text-ink-muted">{t('هذا النص غير مشكول في مصدره المحمَّل.')}</p>}
           </header>
           <HadithText
             text={hadith.textAr}
@@ -278,27 +283,27 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
             onHover={setHoverId}
             onSelect={(id) => (journey.active ? null : update({ node: id }))}
           />
-          <ReportButton entity="hadith" entityId={hadith.number} label={`صحيح البخاري ${hadith.number}`} />
-          <nav className="flex justify-between text-sm" aria-label="التنقل بين الأحاديث">
+          <ReportButton entity="hadith" entityId={hadith.number} label={t('صحيح البخاري {n}', { n: hadith.number })} />
+          <nav className="flex justify-between text-sm" aria-label={t('التنقل بين الأحاديث')}>
             {hadith.prev ? (
-              <Link className="link" to={`/bukhari/${hadith.prev}`} rel="prev">
-                → {hadith.prev}
+              <Link className="link" to={to(`/bukhari/${hadith.prev}`)} rel="prev">
+                {back} {hadith.prev}
               </Link>
             ) : (
               <span />
             )}
             {hadith.next && (
-              <Link className="link" to={`/bukhari/${hadith.next}`} rel="next">
-                {hadith.next} ←
+              <Link className="link" to={to(`/bukhari/${hadith.next}`)} rel="next">
+                {hadith.next} {fwd}
               </Link>
             )}
           </nav>
         </section>
 
         {/* Graph pane: middle. */}
-        <section aria-label="الإسناد" className="pane graph-pane" ref={regionRef}>
+        <section aria-label={t('الإسناد')} className="pane graph-pane" ref={regionRef}>
           {g.chains.length === 0 ? (
-            <p className="p-4 text-ink-muted">لم يُستخرج إسناد هذا الموضع بعد؛ نصه معروض كما في مصدره.</p>
+            <p className="p-4 text-ink-muted">{t('لم يُستخرج إسناد هذا الموضع بعد؛ نصه معروض كما في مصدره.')}</p>
           ) : (
             <>
               <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -306,7 +311,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                   <div
                     className="inline-flex rounded-md border border-hairline"
                     role="radiogroup"
-                    aria-label="نطاق العرض"
+                    aria-label={t('نطاق العرض')}
                   >
                     <button
                       role="radio"
@@ -314,7 +319,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                       className={`seg${!allView ? ' seg-on' : ''}`}
                       onClick={() => update({ view: null, edge: null, t: null, len: null, hu: null })}
                     >
-                      هذا الموضع
+                      {t('هذا الموضع')}
                     </button>
                     <button
                       role="radio"
@@ -322,14 +327,14 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                       className={`seg${allView ? ' seg-on' : ''}`}
                       onClick={() => update({ view: 'all', mode: null, step: null, node: null })}
                     >
-                      جميع الطرق
+                      {t('جميع الطرق')}
                     </button>
                   </div>
                 )}
                 <div
                   className="inline-flex rounded-md border border-hairline"
                   role="radiogroup"
-                  aria-label="تخطيط المخطط"
+                  aria-label={t('تخطيط المخطط')}
                 >
                   <button
                     role="radio"
@@ -337,7 +342,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                     className={`seg${layoutMode === 'layered' ? ' seg-on' : ''}`}
                     onClick={() => update({ layout: null })}
                   >
-                    طبقات
+                    {t('طبقات')}
                   </button>
                   <button
                     role="radio"
@@ -345,55 +350,55 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                     className={`seg${layoutMode === 'timeline' ? ' seg-on' : ''}`}
                     onClick={() => update({ layout: 'timeline' })}
                   >
-                    خط زمني
+                    {t('خط زمني')}
                   </button>
                 </div>
               </div>
               {allView ? (
                 <div className="journey-controls">
                   <p className="w-full text-sm text-ink-muted">
-                    {g.chains.length} طريقًا من {groupEntries.length} مواضع:{' '}
+                    {g.chains.length} {t('طريقًا من')} {groupEntries.length} {t('مواضع:')}{' '}
                     {groupEntries.map((n, i) => (
                       <span key={n}>
-                        {i ? '، ' : ''}
-                        <Link className="link" to={`/bukhari/${n}?view=all`}>
+                        {i ? t('، ') : ''}
+                        <Link className="link" to={to(`/bukhari/${n}?view=all`)}>
                           {n}
                         </Link>
                         {n !== hadith.number && (
                           <Link
                             className="ms-1 text-xs text-ink-muted underline"
-                            to={`/compare/${hadith.number}/${n}`}
-                            aria-label={`قارن ${hadith.number} مع ${n}`}
+                            to={to(`/compare/${hadith.number}/${n}`)}
+                            aria-label={t('قارن {a} مع {b}', { a: hadith.number, b: n })}
                           >
-                            (قارن)
+                            {t('(قارن)')}
                           </Link>
                         )}
                       </span>
                     ))}
                   </p>
                   <label className="text-sm">
-                    <span className="me-1">شيخ البخاري</span>
+                    <span className="me-1">{t('شيخ البخاري')}</span>
                     <select
                       className="select"
                       value={teacherFilter ?? ''}
                       onChange={(e) => update({ t: e.target.value || null, edge: null })}
                     >
-                      <option value="">الكل</option>
-                      {teachers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
+                      <option value="">{t('الكل')}</option>
+                      {teachers.map((tc) => (
+                        <option key={tc.id} value={tc.id}>
+                          {tc.name}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="text-sm">
-                    <span className="me-1">طول الإسناد حتى</span>
+                    <span className="me-1">{t('طول الإسناد حتى')}</span>
                     <select
                       className="select"
                       value={maxLen || ''}
                       onChange={(e) => update({ len: e.target.value || null, edge: null })}
                     >
-                      <option value="">أي طول</option>
+                      <option value="">{t('أي طول')}</option>
                       {[3, 4, 5, 6, 7, 8].map((n) => (
                         <option key={n} value={n}>
                           {n}
@@ -407,14 +412,14 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                       checked={onlyConnected}
                       onChange={(e) => update({ hu: e.target.checked ? '1' : null, edge: null })}
                     />
-                    إخفاء الطرق المعلّقة والمنقطعة وغير المؤكدة
+                    {t('إخفاء الطرق المعلّقة والمنقطعة وغير المؤكدة')}
                   </label>
                 </div>
               ) : (
                 <div className="journey-controls">
                   {!journey.active ? (
                     <button className="btn-primary" onClick={() => update({ mode: 'journey', step: '0', node: null })}>
-                      استكشاف الإسناد
+                      {t('استكشاف الإسناد')}
                     </button>
                   ) : (
                     <>
@@ -424,15 +429,15 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                         disabled={reducedMotion}
                         aria-pressed={playing}
                       >
-                        {playing ? 'إيقاف' : 'تشغيل'}
+                        {playing ? t('إيقاف') : t('تشغيل')}
                       </button>
                       <button
                         className="btn"
                         onClick={() => goStep(step - 1)}
                         disabled={step === 0}
-                        aria-label="الخطوة السابقة"
+                        aria-label={t('الخطوة السابقة')}
                       >
-                        →
+                        {back}
                       </button>
                       <span className="tabular-nums text-sm" aria-hidden>
                         {step + 1} / {order.length}
@@ -441,15 +446,15 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                         className="btn"
                         onClick={() => goStep(step + 1)}
                         disabled={step >= lastStep}
-                        aria-label="الخطوة التالية"
+                        aria-label={t('الخطوة التالية')}
                       >
-                        ←
+                        {fwd}
                       </button>
                       <button className="btn" onClick={() => goStep(0)}>
-                        من البداية
+                        {t('من البداية')}
                       </button>
                       <label className="text-sm">
-                        <span className="sr-only">السرعة</span>
+                        <span className="sr-only">{t('السرعة')}</span>
                         <select
                           value={journey.speed}
                           onChange={(e) => update({ speed: e.target.value })}
@@ -461,19 +466,19 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                         </select>
                       </label>
                       <button className="btn" onClick={() => update({ mode: null, step: null })}>
-                        إنهاء
+                        {t('إنهاء')}
                       </button>
                     </>
                   )}
                   <div
                     className="inline-flex rounded-md border border-hairline"
                     role="radiogroup"
-                    aria-label="اتجاه الرحلة"
+                    aria-label={t('اتجاه الرحلة')}
                   >
                     {(
                       [
-                        ['trace', 'تتبّع الإسناد'],
-                        ['journey', 'رحلة النقل'],
+                        ['trace', t('تتبّع الإسناد')],
+                        ['journey', t('رحلة النقل')],
                       ] as const
                     ).map(([v, label]) => (
                       <button
@@ -489,7 +494,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                   </div>
                   {g.chains.length > 1 && (
                     <label className="text-sm">
-                      <span className="me-1">الطريق</span>
+                      <span className="me-1">{t('الطريق')}</span>
                       <select
                         value={journey.routeId ?? ''}
                         onChange={(e) => update({ route: e.target.value, step: '0' })}
@@ -498,7 +503,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                         {g.chains.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.routeNo}
-                            {c.isSuspended ? ' (معلّق)' : ''}
+                            {c.isSuspended ? t(' (معلّق)') : ''}
                           </option>
                         ))}
                       </select>
@@ -529,17 +534,20 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
               </div>
               {allView && (
                 <p className="mt-2 text-xs text-ink-muted">
-                  الحلقة «المدار» حيث تلتقي الطرق، و«تفرّع» حيث تفترق. سُمك الخط بعدد الطرق المارّة به، ولون الطريق المنفرد
-                  يميّزه. اضغط رابطًا لعرض مواضعه.
+                  {t(
+                    t(
+                      'الحلقة «المدار» حيث تلتقي الطرق، و«تفرّع» حيث تفترق. سُمك الخط بعدد الطرق المارّة به، ولون الطريق المنفرد يميّزه. اضغط رابطًا لعرض مواضعه.',
+                    ),
+                  )}
                 </p>
               )}
               {selectedEdge && (
                 <div className="summary" role="status">
-                  <h3 className="font-semibold">المواضع التي تستعمل هذا الرابط</h3>
+                  <h3 className="font-semibold">{t('المواضع التي تستعمل هذا الرابط')}</h3>
                   <ul className="mt-1 flex flex-wrap gap-2 text-sm">
                     {edgeEntries.map((n) => (
                       <li key={n}>
-                        <Link className="chip tabular-nums" to={`/bukhari/${n}`}>
+                        <Link className="chip tabular-nums" to={to(`/bukhari/${n}`)}>
                           {n}
                         </Link>
                       </li>
@@ -559,7 +567,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
 
         {/* Narrator pane: end side (left in RTL). On smaller screens it opens as a sheet. */}
         {isDesktop ? (
-          <aside aria-label="الراوي" className="pane">
+          <aside aria-label={t('الراوي')} className="pane">
             {narratorPane}
           </aside>
         ) : (
@@ -572,9 +580,9 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
             <Dialog.Portal>
               <Dialog.Overlay className="sheet-overlay" />
               <Dialog.Content className="sheet" aria-describedby={undefined}>
-                <Dialog.Title className="sr-only">الراوي</Dialog.Title>
+                <Dialog.Title className="sr-only">{t('الراوي')}</Dialog.Title>
                 {narratorPane}
-                <Dialog.Close className="btn mt-4">إغلاق</Dialog.Close>
+                <Dialog.Close className="btn mt-4">{t('إغلاق')}</Dialog.Close>
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog.Root>
@@ -591,14 +599,16 @@ function stepText(
   dir: JourneyState['dir'],
   nodeById: Map<string, IsnadGraph['nodes'][number]>,
   edgeByKey: Map<string, IsnadGraph['edges'][number]>,
+  t: (ar: string | undefined, vars?: Record<string, string | number>) => string,
 ): string {
   const n = nodeById.get(order[step] ?? '');
   if (!n) return '';
   const e = step > 0 ? edgeByKey.get(edgeKey(order, step - 1, dir)) : undefined;
-  return `الخطوة ${step + 1} من ${order.length}: ${e?.termAr ? `${e.termAr} ` : ''}${labelOf(n)}`;
+  return `${t('الخطوة {k} من {n}', { k: step + 1, n: order.length })}: ${e?.termAr ? `${e.termAr} ` : ''}${labelOf(n)}`;
 }
 
 function JourneySummary({ graph, order, dir }: { graph: IsnadGraph; order: string[]; dir: JourneyState['dir'] }) {
+  const { t } = useI18n();
   const keys = order.slice(0, -1).map((_, i) => edgeKey(order, i, dir));
   const edges = keys
     .map((k) => graph.edges.find((e) => `${e.from}>${e.to}` === k))
@@ -607,11 +617,17 @@ function JourneySummary({ graph, order, dir }: { graph: IsnadGraph; order: strin
   const broken = edges.filter((e) => e.kind !== 'connected');
   return (
     <div className="summary" role="status">
-      <h3 className="font-semibold">خلاصة الطريق</h3>
+      <h3 className="font-semibold">{t('خلاصة الطريق')}</h3>
       <ul className="text-sm">
-        <li>عدد الروابط: {edges.length}</li>
-        <li>صيغ الأداء: {phrases.length ? phrases.join('، ') : 'غير متوفر'}</li>
-        <li>{broken.length ? `روابط معلّقة أو منقطعة: ${broken.length}` : 'لا انقطاع ظاهر في هذا الطريق'}</li>
+        <li>
+          {t('عدد الروابط:')} {edges.length}
+        </li>
+        <li>
+          {t('صيغ الأداء:')} {phrases.length ? phrases.join(t('، ')) : t('غير متوفر')}
+        </li>
+        <li>
+          {broken.length ? t('روابط معلّقة أو منقطعة: {n}', { n: broken.length }) : t('لا انقطاع ظاهر في هذا الطريق')}
+        </li>
       </ul>
     </div>
   );
@@ -619,17 +635,18 @@ function JourneySummary({ graph, order, dir }: { graph: IsnadGraph; order: strin
 
 /** The graph's text equivalent: an ordered list per route and its links (SPEC §15). */
 function TextAlternative({ graph, activeRoute }: { graph: IsnadGraph; activeRoute: number | null }) {
+  const { t } = useI18n();
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const edge = new Map(graph.edges.map((e) => [`${e.from}>${e.to}`, e]));
   return (
     <details className="mt-3" open={false}>
-      <summary className="cursor-pointer text-sm">الإسناد نصًا (لقارئات الشاشة وللنسخ)</summary>
+      <summary className="cursor-pointer text-sm">{t('الإسناد نصًا (لقارئات الشاشة وللنسخ)')}</summary>
       {graph.chains.map((c) => (
         <section key={c.id} className="mt-2">
           <h3 className="text-sm font-semibold">
-            الطريق {c.routeNo}
-            {c.id === activeRoute ? ' (المختار)' : ''} — {TERMINUS_AR[c.terminus]}
-            {c.isSuspended ? '، معلّق' : ''}
+            {t('الطريق')} {c.routeNo}
+            {c.id === activeRoute ? t(' (المختار)') : ''} — {t(TERMINUS_AR[c.terminus])}
+            {c.isSuspended ? t('، معلّق') : ''}
           </h3>
           <ol className="list-decimal ps-6 text-sm">
             {c.nodeIds.map((id, i) => {
@@ -642,8 +659,8 @@ function TextAlternative({ graph, activeRoute }: { graph: IsnadGraph; activeRout
                   {e && (
                     <span className="text-ink-muted">
                       {' '}
-                      — {e.termAr ?? 'صيغة غير متوفرة'}
-                      {e.kind === 'suspended' ? ' (تعليق)' : e.kind === 'gap' ? ' (انقطاع)' : ''}
+                      — {e.termAr ?? t('صيغة غير متوفرة')}
+                      {e.kind === 'suspended' ? t(' (تعليق)') : e.kind === 'gap' ? t(' (انقطاع)') : ''}
                     </span>
                   )}
                 </li>
@@ -658,29 +675,31 @@ function TextAlternative({ graph, activeRoute }: { graph: IsnadGraph; activeRout
 
 /** «مؤشرات للباحث» (SPEC §13): inputs, formula and scope; neutral words, no combined score, never a verdict. */
 function Indicators({ graph, sources }: { graph: IsnadGraph; sources: SourceInfo[] }) {
+  const { t, locale } = useI18n();
+  const en = locale === 'en';
   if (!graph.indicators.length) return null;
   return (
     <section className="mt-3" aria-labelledby="ind-title">
       <h3 id="ind-title" className="text-sm font-semibold">
-        مؤشرات للباحث
+        {t('مؤشرات للباحث')}
       </h3>
-      <p className="text-xs text-ink-muted">إشارات تساعد الباحث، وليست أحكامًا على الحديث.</p>
+      <p className="text-xs text-ink-muted">{t('إشارات تساعد الباحث، وليست أحكامًا على الحديث.')}</p>
       <div className="mt-1 space-y-1">
         {graph.indicators.map((i) => (
           <details key={i.key} className="indicator">
             <summary className="flex cursor-pointer flex-wrap justify-between gap-2 text-sm">
-              <span className="font-semibold">{i.labelAr}</span>
-              <span>{i.valueAr}</span>
+              <span className="font-semibold">{en ? (INDICATOR_EN[i.key]?.label ?? i.labelAr) : i.labelAr}</span>
+              <span>{translateIndicator(locale, i.valueAr)}</span>
             </summary>
             <p className="mt-1 text-xs text-ink-muted">
-              {i.formulaAr} النطاق: {i.scopeAr}.
+              {en ? INDICATOR_EN[i.key]?.formula : i.formulaAr} {t('النطاق:')} {en ? INDICATOR_SCOPE_EN : i.scopeAr}.
             </p>
             {i.inputs.length > 0 && (
               <ul className="mt-1 space-y-0.5 text-xs">
                 {i.inputs.map((x, k) => (
                   <li key={k}>
-                    {x.labelAr}
-                    {x.value != null && <>: {x.value}</>}{' '}
+                    {translateIndicator(locale, x.labelAr)}
+                    {x.value != null && <>: {translateIndicator(locale, x.value)}</>}{' '}
                     <Cite ids={x.citationIds} citations={graph.citations} sources={sources} />
                   </li>
                 ))}

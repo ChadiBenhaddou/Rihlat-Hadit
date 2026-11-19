@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
-import { requireStaff, ROLE_AR } from '~/lib/admin.server';
+import { ROLE_AR } from '~/lib/admin-labels';
+import { requireStaff } from '~/lib/admin.server';
 import type { Route } from './+types/layout';
 
 export async function loader({ request, context }: Route.LoaderArgs) {

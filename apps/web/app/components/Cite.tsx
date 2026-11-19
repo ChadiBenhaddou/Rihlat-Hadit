@@ -1,5 +1,6 @@
 import * as Popover from '@radix-ui/react-popover';
 import type { Citation, SourceInfo } from '@isnad/shared';
+import { useI18n } from '~/i18n';
 
 /** A citation marker that opens the source, edition, locator and licence (SPEC §11: every fact has a popover). */
 export function Cite({
@@ -11,13 +12,14 @@ export function Cite({
   citations: Citation[];
   sources: SourceInfo[];
 }) {
+  const { t } = useI18n();
   const list = ids.flatMap((id) => citations.filter((c) => c.id === id));
   if (list.length === 0) return null;
   const bySlug = new Map(sources.map((s) => [s.slug, s]));
   return (
     <Popover.Root>
-      <Popover.Trigger className="cite-trigger" aria-label="المصدر">
-        [م]
+      <Popover.Trigger className="cite-trigger" aria-label={t('المصدر')}>
+        {t('[م]')}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content className="popover" sideOffset={6} collisionPadding={12}>
@@ -30,7 +32,7 @@ export function Cite({
                   {s?.edition && <div className="text-ink-muted">{s.edition}</div>}
                   {c.locator && (
                     <div className="text-ink-muted">
-                      الموضع:{' '}
+                      {t('الموضع:')}{' '}
                       <span dir="ltr" lang="en">
                         {c.locator}
                       </span>
@@ -38,16 +40,16 @@ export function Cite({
                   )}
                   {s && (
                     <div className="text-ink-muted">
-                      الترخيص:{' '}
+                      {t('الترخيص:')}{' '}
                       <span dir="ltr" lang="en">
                         {s.license}
                       </span>
-                      {s.kind === 'dataset' && ' · مصدر ثانوي'}
+                      {s.kind === 'dataset' && t(' · مصدر ثانوي')}
                     </div>
                   )}
                   {(c.url ?? s?.url) && (
                     <a className="link" href={(c.url ?? s?.url)!} rel="noopener noreferrer" target="_blank">
-                      رابط المصدر
+                      {t('رابط المصدر')}
                     </a>
                   )}
                 </li>

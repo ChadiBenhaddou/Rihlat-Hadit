@@ -1,12 +1,18 @@
 /** Display helpers. Western digits by default (SPEC §11). */
 
 /** «ت 144 هـ (نحو 761 م)»: Hijri first, CE as an approximation (CE ≈ 0.97 × AH + 622). */
-export function hijri(ah: number | null | undefined, ahMax?: number | null, prefix = ''): string | null {
+export function hijri(
+  ah: number | null | undefined,
+  ahMax?: number | null,
+  prefix = '',
+  locale: 'ar' | 'en' = 'ar',
+): string | null {
   if (ah == null) return null;
   const ce = (y: number) => Math.round(0.97 * y + 622);
   const range = ahMax != null && ahMax !== ah;
   const ahText = range ? `${ah}–${ahMax}` : `${ah}`;
   const ceText = range ? `${ce(ah)}–${ce(ahMax!)}` : `${ce(ah)}`;
+  if (locale === 'en') return `${prefix === 'ت ' ? 'd. ' : prefix}${ahText} AH (c. ${ceText} CE)`;
   return `${prefix}${ahText} هـ (نحو ${ceText} م)`;
 }
 

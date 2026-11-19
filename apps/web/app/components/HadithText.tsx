@@ -57,7 +57,7 @@ export function HadithText({
     return out;
   };
   return (
-    <div className="hadith-text">
+    <div className="hadith-text" lang="ar" dir="rtl">
       {split > 0 && <p className="isnad-text">{render(0, split)}</p>}
       <p className="matn-text">{render(split, text.length)}</p>
     </div>

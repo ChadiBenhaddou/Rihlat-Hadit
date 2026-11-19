@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
-import { KIND_AR, requireStaff } from '~/lib/admin.server';
+import { KIND_AR } from '~/lib/admin-labels';
+import { requireStaff } from '~/lib/admin.server';
 import type { Route } from './+types/dashboard';
 
 export async function loader({ request, context }: Route.LoaderArgs) {

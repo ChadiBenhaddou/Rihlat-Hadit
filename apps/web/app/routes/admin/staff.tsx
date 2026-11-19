@@ -1,5 +1,6 @@
 import { Form } from 'react-router';
-import { requireStaff, ROLE_AR } from '~/lib/admin.server';
+import { ROLE_AR } from '~/lib/admin-labels';
+import { requireStaff } from '~/lib/admin.server';
 import type { Route } from './+types/staff';
 
 export async function loader({ request, context }: Route.LoaderArgs) {

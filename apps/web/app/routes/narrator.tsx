@@ -7,6 +7,7 @@ import { dataContext, notFound } from '~/lib/data.server';
 import { FLAG_AR, hijri, RELATION_AR, ROLE_AR, UNAVAILABLE } from '~/lib/format';
 import { getNarrator } from '../../server/data/narrators';
 import type { Route } from './+types/narrator';
+import { localeOf, translate, useI18n } from '~/i18n';
 
 // WebGL network: loaded only when opened, never in the page's initial JavaScript.
 const NetworkView = lazy(() => import('~/network/NetworkView'));
@@ -27,19 +28,23 @@ export async function loader({ params, context }: Route.LoaderArgs) {
   return { narrator };
 }
 
-export function meta({ loaderData: data }: Route.MetaArgs) {
+export function meta({ loaderData: data, location }: Route.MetaArgs) {
+  const locale = localeOf(location.pathname);
   if (!data) return [{ title: 'غير موجود' }];
   const n = data.narrator;
   return [
-    { title: `${n.displayNameAr} — رواة صحيح البخاري | رحلة الحديث` },
+    { title: `${n.displayNameAr} — ${translate(locale, 'رواة صحيح البخاري | رحلة الحديث')}` },
     {
       name: 'description',
-      content: [n.fullNameAr ?? n.displayNameAr, hijri(n.deathAh, n.deathAhMax, 'ت ')].filter(Boolean).join('، '),
+      content: [n.fullNameAr ?? n.displayNameAr, hijri(n.deathAh, n.deathAhMax, 'ت ', locale)]
+        .filter(Boolean)
+        .join('، '),
     },
   ];
 }
 
 export default function Narrator({ loaderData }: Route.ComponentProps) {
+  const { t, to, locale } = useI18n();
   const p = loaderData.narrator;
   const [params, setParams] = useSearchParams();
   const showNet = params.get('net') === '1';
@@ -67,7 +72,7 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
           {p.honorificAr ? ` ${p.honorificAr}` : ''}
         </h1>
         {p.fullNameAr && p.fullNameAr !== p.displayNameAr && <p className="text-ink-muted">{p.fullNameAr}</p>}
-        <p className="text-sm text-ink-muted">{ROLE_AR[p.role]}</p>
+        <p className="text-sm text-ink-muted">{t(ROLE_AR[p.role])}</p>
         <div className="flex flex-wrap items-center gap-2">
           <ReviewBadge status={p.reviewStatus} sourceKind={sourceKind} />
           <ReportButton entity="narrator" entityId={p.id} label={p.displayNameAr} />
@@ -75,23 +80,23 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
       </header>
 
       <section className="pane">
-        <h2 className="mb-2 font-semibold">ما تذكره المصادر</h2>
+        <h2 className="mb-2 font-semibold">{t('ما تذكره المصادر')}</h2>
         <dl className="facts">
-          <dt>الوفاة</dt>
+          <dt>{t('الوفاة')}</dt>
           <dd>
-            {hijri(p.deathAh, p.deathAhMax) ?? UNAVAILABLE} {cite([p.datesCitationId])}
+            {hijri(p.deathAh, p.deathAhMax, '', locale) ?? t(UNAVAILABLE)} {cite([p.datesCitationId])}
           </dd>
-          <dt>المولد</dt>
+          <dt>{t('المولد')}</dt>
           <dd>
-            {hijri(p.birthAh) ?? UNAVAILABLE} {p.birthAh != null && cite([p.datesCitationId])}
+            {hijri(p.birthAh, null, '', locale) ?? t(UNAVAILABLE)} {p.birthAh != null && cite([p.datesCitationId])}
           </dd>
-          <dt>الطبقة</dt>
+          <dt>{t('الطبقة')}</dt>
           <dd>
-            {p.tabaqa ?? UNAVAILABLE} {p.tabaqa != null && cite([p.datesCitationId])}
+            {p.tabaqa ?? t(UNAVAILABLE)} {p.tabaqa != null && cite([p.datesCitationId])}
           </dd>
           {p.summaryGrade && (
             <>
-              <dt>خلاصة الحكم</dt>
+              <dt>{t('خلاصة الحكم')}</dt>
               <dd>
                 {p.summaryGrade.textAr} {cite([p.summaryGrade.citationId])}
               </dd>
@@ -99,9 +104,9 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
           )}
           {p.flags.map((f) => (
             <div key={f.flag} className="contents">
-              <dt>تنبيه</dt>
+              <dt>{t('تنبيه')}</dt>
               <dd>
-                {FLAG_AR[f.flag]} {cite([f.citationId])}
+                {t(FLAG_AR[f.flag])} {cite([f.citationId])}
               </dd>
             </div>
           ))}
@@ -110,28 +115,33 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
           <ul className="mt-3 flex flex-wrap gap-2 text-sm">
             {p.places.map((pl, i) => (
               <li key={i} className="chip">
-                {RELATION_AR[pl.relation] ?? pl.relation} {pl.nameAr} {cite([pl.citationId])}
+                {t(RELATION_AR[pl.relation] ?? pl.relation)} {pl.nameAr} {cite([pl.citationId])}
               </li>
             ))}
           </ul>
         )}
         {p.names.length > 1 && (
           <details className="mt-3 text-sm">
-            <summary className="cursor-pointer">صور ورود الاسم ({p.names.length})</summary>
+            <summary className="cursor-pointer">
+              {t('صور ورود الاسم (')}
+              {p.names.length})
+            </summary>
             <p className="mt-1 leading-loose">{p.names.map((n) => n.formAr).join(' · ')}</p>
           </details>
         )}
       </section>
 
       <section className="pane">
-        <h2 className="mb-2 font-semibold">الجرح والتعديل: أقوال النقاد</h2>
-        <p className="mb-2 text-xs text-ink-muted">أقوال منسوبة إلى قائليها كما في المصدر، تُعرض للباحث دون ترجيح.</p>
+        <h2 className="mb-2 font-semibold">{t('الجرح والتعديل: أقوال النقاد')}</h2>
+        <p className="mb-2 text-xs text-ink-muted">
+          {t('أقوال منسوبة إلى قائليها كما في المصدر، تُعرض للباحث دون ترجيح.')}
+        </p>
         {p.gradings.length === 0 ? (
-          <p className="text-ink-muted">{UNAVAILABLE}</p>
+          <p className="text-ink-muted">{t(UNAVAILABLE)}</p>
         ) : (
           <ul className="space-y-2">
             {p.gradings.map((g, i) => (
-              <li key={i}>
+              <li key={i} lang="ar" dir="rtl">
                 <span className="font-semibold">{g.criticAr}:</span> {g.statementAr} {cite([g.citationId])}
               </li>
             ))}
@@ -142,8 +152,8 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
       <div className="grid gap-6 md:grid-cols-2">
         {(
           [
-            ['شيوخه في الصحيح', p.teachers],
-            ['تلاميذه في الصحيح', p.students],
+            [t('شيوخه في الصحيح'), p.teachers],
+            [t('تلاميذه في الصحيح'), p.students],
           ] as const
         ).map(([title, list]) => (
           <section key={title} className="pane">
@@ -151,15 +161,15 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
               {title} ({list.length})
             </h2>
             {list.length === 0 ? (
-              <p className="text-ink-muted">{UNAVAILABLE}</p>
+              <p className="text-ink-muted">{t(UNAVAILABLE)}</p>
             ) : (
               <ul className="space-y-1 text-sm">
-                {list.map((t) => (
-                  <li key={t.slug} className="flex justify-between gap-2">
-                    <Link className="link" to={`/narrator/${t.slug}`}>
-                      {t.nameAr}
+                {list.map((x) => (
+                  <li key={x.slug} className="flex justify-between gap-2">
+                    <Link className="link" to={to(`/narrator/${x.slug}`)}>
+                      {x.nameAr}
                     </Link>
-                    <span className="tabular-nums text-ink-muted">{t.count}</span>
+                    <span className="tabular-nums text-ink-muted">{x.count}</span>
                   </li>
                 ))}
               </ul>
@@ -171,14 +181,14 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
       <section className="pane" aria-labelledby="net-title">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 id="net-title" className="font-semibold">
-            شبكة الرواة
+            {t('شبكة الرواة')}
           </h2>
           <button className="btn text-sm" onClick={() => setParam('net', showNet ? null : '1')} aria-expanded={showNet}>
-            {showNet ? 'إخفاء الشبكة' : 'عرض الشبكة'}
+            {showNet ? t('إخفاء الشبكة') : t('عرض الشبكة')}
           </button>
         </div>
         {showNet && mounted && p.role !== 'prophet' && (
-          <Suspense fallback={<p className="text-ink-muted">جارٍ تحميل الشبكة…</p>}>
+          <Suspense fallback={<p className="text-ink-muted">{t('جارٍ تحميل الشبكة…')}</p>}>
             <NetworkView
               center={p.slug}
               centerName={p.displayNameAr}
@@ -191,11 +201,14 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section className="pane">
-        <h2 className="mb-2 font-semibold">أحاديثه في الصحيح ({p.hadithCount})</h2>
+        <h2 className="mb-2 font-semibold">
+          {t('أحاديثه في الصحيح (')}
+          {p.hadithCount})
+        </h2>
         <ul className="flex flex-wrap gap-2 text-sm">
           {p.hadithNumbers.map((n) => (
             <li key={n}>
-              <Link className="chip tabular-nums" to={`/bukhari/${n}?node=n:${p.id}`}>
+              <Link className="chip tabular-nums" to={to(`/bukhari/${n}?node=n:${p.id}`)}>
                 {n}
               </Link>
             </li>

@@ -2,6 +2,8 @@ import type { SourceInfo } from '@isnad/shared';
 import { dataContext } from '~/lib/data.server';
 import { ALL_SOURCES_SQL } from '../../server/data/common';
 import type { Route } from './+types/sources';
+import { useI18n } from '~/i18n';
+import { localeOf, translate } from '~/i18n';
 
 export async function loader({ context }: Route.LoaderArgs) {
   const { db } = await dataContext(context);
@@ -9,8 +11,8 @@ export async function loader({ context }: Route.LoaderArgs) {
   return { sources: results };
 }
 
-export function meta(_: Route.MetaArgs) {
-  return [{ title: 'المصادر وتراخيصها | رحلة الحديث' }];
+export function meta({ location }: Route.MetaArgs) {
+  return [{ title: translate(localeOf(location.pathname), 'المصادر وتراخيصها | رحلة الحديث') }];
 }
 
 const KIND_AR: Record<string, string> = {
@@ -22,11 +24,12 @@ const KIND_AR: Record<string, string> = {
 };
 
 export default function Sources({ loaderData }: Route.ComponentProps) {
+  const { t } = useI18n();
   return (
     <main id="main" className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold">المصادر وتراخيصها</h1>
+      <h1 className="text-2xl font-semibold">{t('المصادر وتراخيصها')}</h1>
       <p className="text-ink-muted">
-        كل معلومة في الموقع تحيل إلى أحد هذه المصادر. تُذكر صيغة الإسناد المطلوبة في الترخيص كما هي.
+        {t('كل معلومة في الموقع تحيل إلى أحد هذه المصادر. تُذكر صيغة الإسناد المطلوبة في الترخيص كما هي.')}
       </p>
       <ul className="space-y-4">
         {loaderData.sources.map((s) => (
@@ -37,17 +40,23 @@ export default function Sources({ loaderData }: Route.ComponentProps) {
                 {s.titleEn}
               </p>
             )}
-            <p className="text-sm">النوع: {KIND_AR[s.kind] ?? s.kind}</p>
-            {s.edition && <p className="text-sm">الطبعة والنسخة: {s.edition}</p>}
             <p className="text-sm">
-              الترخيص:{' '}
+              {t('النوع:')} {t(KIND_AR[s.kind]) || s.kind}
+            </p>
+            {s.edition && (
+              <p className="text-sm">
+                {t('الطبعة والنسخة:')} {s.edition}
+              </p>
+            )}
+            <p className="text-sm">
+              {t('الترخيص:')}{' '}
               <span dir="ltr" lang="en">
                 {s.license}
               </span>
             </p>
             {s.attribution && (
               <p className="text-sm">
-                الإسناد المطلوب:{' '}
+                {t('الإسناد المطلوب:')}{' '}
                 <span dir="ltr" lang="en">
                   {s.attribution}
                 </span>
@@ -62,10 +71,11 @@ export default function Sources({ loaderData }: Route.ComponentProps) {
         ))}
       </ul>
       <section className="space-y-1 text-sm text-ink-muted">
-        <h2 className="font-semibold text-ink">الخطوط</h2>
+        <h2 className="font-semibold text-ink">{t('الخطوط')}</h2>
         <p>
-          خط Amiri لنصوص الحديث وخط IBM Plex Sans Arabic للواجهة، وكلاهما برخصة SIL Open Font License، ويُستضافان على هذا
-          الموقع.
+          {t(
+            'خط Amiri لنصوص الحديث وخط IBM Plex Sans Arabic للواجهة، وكلاهما برخصة SIL Open Font License، ويُستضافان على هذا الموقع.',
+          )}
         </p>
       </section>
     </main>

@@ -93,8 +93,9 @@ export async function verifyAccessJwt(
 /** The signed-in staff member, or null. Never trusts a header without verifying it. */
 export async function currentStaff(request: Request, env: Env): Promise<Staff | null> {
   let email: string | null = null;
-  const devEmail = (env as Env & { DEV_ADMIN_EMAIL?: string }).DEV_ADMIN_EMAIL;
-  if (import.meta.env.DEV && devEmail) {
+  // The whole dev branch, including the read of DEV_ADMIN_EMAIL, is removed from production builds.
+  const devEmail = import.meta.env.DEV ? (env as Env & { DEV_ADMIN_EMAIL?: string }).DEV_ADMIN_EMAIL : undefined;
+  if (devEmail) {
     email = devEmail.toLowerCase();
   } else {
     const token = request.headers.get('Cf-Access-Jwt-Assertion');

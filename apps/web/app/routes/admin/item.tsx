@@ -1,5 +1,6 @@
 import { Form, Link, useActionData } from 'react-router';
-import { KIND_AR, requireStaff } from '~/lib/admin.server';
+import { KIND_AR } from '~/lib/admin-labels';
+import { requireStaff } from '~/lib/admin.server';
 import { handleProposalForm } from '~/lib/proposal-form.server';
 import { getHadith } from '../../../server/data/hadith';
 import { reviewItem } from '../../../server/admin/queries';

@@ -5,6 +5,7 @@ import { dataContext } from '~/lib/data.server';
 import { hijri } from '~/lib/format';
 import { searchHadith, searchNarrators } from '../../server/data/search';
 import type { Route } from './+types/search';
+import { localeOf, translate, useI18n } from '~/i18n';
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -26,9 +27,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   return { q, type, result };
 }
 
-export function meta({ loaderData: data }: Route.MetaArgs) {
+export function meta({ loaderData: data, location }: Route.MetaArgs) {
   return [
-    { title: data?.q ? `بحث: ${data.q} | رحلة الحديث` : 'البحث | رحلة الحديث' },
+    {
+      title: data?.q
+        ? translate(localeOf(location.pathname), 'بحث: {q} | رحلة الحديث', { q: data.q })
+        : translate(localeOf(location.pathname), 'البحث | رحلة الحديث'),
+    },
     { name: 'robots', content: 'noindex' },
   ];
 }
@@ -48,11 +53,12 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
 }
 
 export default function Search({ loaderData }: Route.ComponentProps) {
+  const { t, to, locale } = useI18n();
   const { q, type, result } = loaderData;
   const tab = (t: string, label: string) => (
     <Link
       className={`seg${type === t ? ' seg-on' : ''}`}
-      to={`/search?type=${t}&q=${encodeURIComponent(q)}`}
+      to={to(`/search?type=${t}&q=${encodeURIComponent(q)}`)}
       aria-current={type === t ? 'page' : undefined}
     >
       {label}
@@ -60,44 +66,44 @@ export default function Search({ loaderData }: Route.ComponentProps) {
   );
   return (
     <main id="main" className="mx-auto max-w-3xl space-y-4 px-4 py-8">
-      <h1 className="text-2xl font-semibold">البحث</h1>
+      <h1 className="text-2xl font-semibold">{t('البحث')}</h1>
       <SearchBox defaultValue={q} type={type} />
-      <nav className="inline-flex rounded-md border border-hairline" aria-label="نوع البحث">
-        {tab('hadith', 'الأحاديث')}
-        {tab('narrator', 'الرواة')}
+      <nav className="inline-flex rounded-md border border-hairline" aria-label={t('نوع البحث')}>
+        {tab('hadith', t('الأحاديث'))}
+        {tab('narrator', t('الرواة'))}
       </nav>
       {result && (
         <>
           <p className="text-sm text-ink-muted" role="status">
             {result.results.length
-              ? `النتائج${result.nextCursor ? ' (الصفحة الحالية)' : ''}: ${result.results.length}`
-              : 'لا نتائج. جرّب كلمات أقل أو صيغة أخرى.'}
+              ? t('النتائج: {n}', { n: result.results.length })
+              : t('لا نتائج. جرّب كلمات أقل أو صيغة أخرى.')}
           </p>
           <ol className="space-y-3">
             {result.results.map((r) =>
               r.kind === 'hadith' ? (
                 <li key={`h${r.number}`}>
-                  <Link to={`/bukhari/${r.number}`} className="card block space-y-1">
+                  <Link to={to(`/bukhari/${r.number}`)} className="card block space-y-1">
                     <div className="text-sm text-ink-muted">
-                      صحيح البخاري {r.number}
+                      {t('صحيح البخاري {n}', { n: r.number })}
                       {r.bookTitleAr ? ` · ${r.bookTitleAr}` : ''}
                     </div>
-                    <p className="hadith-snippet line-clamp-3">
+                    <p className="hadith-snippet line-clamp-3" lang="ar" dir="rtl">
                       <Highlighted text={r.textAr} terms={result.terms} />
                     </p>
                   </Link>
                 </li>
               ) : (
                 <li key={`n${r.slug}`}>
-                  <Link to={`/narrator/${r.slug}`} className="card block">
+                  <Link to={to(`/narrator/${r.slug}`)} className="card block">
                     <div className="font-semibold">{r.nameAr}</div>
                     {/* Death year, city and tabaqa in every result: many narrators share names (SPEC §9). */}
                     <div className="text-sm text-ink-muted">
                       {[
-                        hijri(r.deathAh, null, 'ت ') ?? 'سنة الوفاة غير متوفرة',
-                        r.placeAr ?? 'البلد غير متوفر',
-                        r.tabaqa != null ? `الطبقة ${r.tabaqa}` : 'الطبقة غير متوفرة',
-                        `${r.hadithCount} حديثًا`,
+                        hijri(r.deathAh, null, t('ت '), locale) ?? t('سنة الوفاة غير متوفرة'),
+                        r.placeAr ?? t('البلد غير متوفر'),
+                        r.tabaqa != null ? t('الطبقة {n}', { n: r.tabaqa }) : t('الطبقة غير متوفرة'),
+                        t('{n} حديثًا', { n: r.hadithCount }),
                       ].join(' · ')}
                     </div>
                   </Link>
@@ -106,8 +112,11 @@ export default function Search({ loaderData }: Route.ComponentProps) {
             )}
           </ol>
           {result.nextCursor && (
-            <Link className="btn" to={`/search?type=${type}&q=${encodeURIComponent(q)}&cursor=${result.nextCursor}`}>
-              المزيد
+            <Link
+              className="btn"
+              to={to(`/search?type=${type}&q=${encodeURIComponent(q)}&cursor=${result.nextCursor}`)}
+            >
+              {t('المزيد')}
             </Link>
           )}
         </>

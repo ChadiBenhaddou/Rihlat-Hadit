@@ -25,7 +25,10 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   for (const n of (narrators?.results ?? []) as { slug: string }[]) urls.push(`/narrator/${n.slug}`);
   const parts = Math.ceil(urls.length / PER);
   if (!params.part) {
-    const items = Array.from({ length: parts }, (_, i) => `<sitemap><loc>${origin}/sitemap/${i + 1}.xml</loc></sitemap>`).join('');
+    const items = Array.from(
+      { length: parts },
+      (_, i) => `<sitemap><loc>${origin}/sitemap/${i + 1}.xml</loc></sitemap>`,
+    ).join('');
     return xml(`<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${items}</sitemapindex>`);
   }
   const part = Number(params.part);

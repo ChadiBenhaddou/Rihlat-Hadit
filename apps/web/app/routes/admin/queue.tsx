@@ -1,5 +1,6 @@
 import { Form, Link } from 'react-router';
-import { KIND_AR, requireStaff } from '~/lib/admin.server';
+import { KIND_AR } from '~/lib/admin-labels';
+import { requireStaff } from '~/lib/admin.server';
 import { listQueue } from '../../../server/admin/queries';
 import type { Route } from './+types/queue';
 
