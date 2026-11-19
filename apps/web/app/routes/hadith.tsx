@@ -10,6 +10,7 @@ import { Link, useSearchParams } from 'react-router';
 import { Cite } from '~/components/Cite';
 import { HadithText } from '~/components/HadithText';
 import { NarratorCard } from '~/components/NarratorCard';
+import { ReportButton } from '~/components/ReportButton';
 import { ReviewBadge } from '~/components/ReviewBadge';
 import { IsnadGraphView, labelOf, type GraphFocus } from '~/graph/IsnadGraphView';
 import { journeyOrder, readJourney, STEP_MS, type JourneyState } from '~/graph/journey';
@@ -86,7 +87,11 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
   const edgeByKey = useMemo(() => new Map(g.edges.map((e) => [`${e.from}>${e.to}`, e])), [g]);
 
   const selectedParam = params.get('node');
-  const selectedId = journey.active ? (order[step] ?? null) : selectedParam && nodeById.has(selectedParam) ? selectedParam : null;
+  const selectedId = journey.active
+    ? (order[step] ?? null)
+    : selectedParam && nodeById.has(selectedParam)
+      ? selectedParam
+      : null;
   const selected = selectedId ? nodeById.get(selectedId) : undefined;
 
   const update = useCallback(
@@ -106,7 +111,10 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
     [setParams],
   );
 
-  const goStep = useCallback((s: number) => update({ step: String(Math.max(0, Math.min(lastStep, s))) }), [update, lastStep]);
+  const goStep = useCallback(
+    (s: number) => update({ step: String(Math.max(0, Math.min(lastStep, s))) }),
+    [update, lastStep],
+  );
 
   // Autoplay: one step per 1.2 s at 1×; never under reduced motion.
   useEffect(() => {
@@ -157,7 +165,9 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
   }, [journey.active, journey.dir, order, step]);
 
   const madar = g.indicators.find((i) => i.key === 'common_link')?.nodeIds ?? [];
-  const textSource = hadith.sources.find((s) => g.citations.some((c) => c.id === hadith.citationId && c.sourceSlug === s.slug));
+  const textSource = hadith.sources.find((s) =>
+    g.citations.some((c) => c.id === hadith.citationId && c.sourceSlug === s.slug),
+  );
   const announce = journey.active ? stepText(order, step, journey.dir, nodeById, edgeByKey) : '';
   const done = journey.active && step >= lastStep && order.length > 0;
   const chain = g.chains.find((c) => c.id === journey.routeId);
@@ -208,6 +218,7 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
             onHover={setHoverId}
             onSelect={(id) => (journey.active ? null : update({ node: id }))}
           />
+          <ReportButton entity="hadith" entityId={hadith.number} label={`صحيح البخاري ${hadith.number}`} />
           <nav className="flex justify-between text-sm" aria-label="التنقل بين الأحاديث">
             {hadith.prev ? (
               <Link className="link" to={`/bukhari/${hadith.prev}`} rel="prev">
@@ -237,16 +248,31 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                   </button>
                 ) : (
                   <>
-                    <button className="btn" onClick={() => setPlaying((p) => !p)} disabled={reducedMotion} aria-pressed={playing}>
+                    <button
+                      className="btn"
+                      onClick={() => setPlaying((p) => !p)}
+                      disabled={reducedMotion}
+                      aria-pressed={playing}
+                    >
                       {playing ? 'إيقاف' : 'تشغيل'}
                     </button>
-                    <button className="btn" onClick={() => goStep(step - 1)} disabled={step === 0} aria-label="الخطوة السابقة">
+                    <button
+                      className="btn"
+                      onClick={() => goStep(step - 1)}
+                      disabled={step === 0}
+                      aria-label="الخطوة السابقة"
+                    >
                       →
                     </button>
                     <span className="tabular-nums text-sm" aria-hidden>
                       {step + 1} / {order.length}
                     </span>
-                    <button className="btn" onClick={() => goStep(step + 1)} disabled={step >= lastStep} aria-label="الخطوة التالية">
+                    <button
+                      className="btn"
+                      onClick={() => goStep(step + 1)}
+                      disabled={step >= lastStep}
+                      aria-label="الخطوة التالية"
+                    >
                       ←
                     </button>
                     <button className="btn" onClick={() => goStep(0)}>
@@ -254,7 +280,11 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                     </button>
                     <label className="text-sm">
                       <span className="sr-only">السرعة</span>
-                      <select value={journey.speed} onChange={(e) => update({ speed: e.target.value })} className="select">
+                      <select
+                        value={journey.speed}
+                        onChange={(e) => update({ speed: e.target.value })}
+                        className="select"
+                      >
                         <option value="0.5">0.5×</option>
                         <option value="1">1×</option>
                         <option value="2">2×</option>
@@ -265,7 +295,11 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                     </button>
                   </>
                 )}
-                <div className="inline-flex rounded-md border border-hairline" role="radiogroup" aria-label="اتجاه الرحلة">
+                <div
+                  className="inline-flex rounded-md border border-hairline"
+                  role="radiogroup"
+                  aria-label="اتجاه الرحلة"
+                >
                   {(
                     [
                       ['trace', 'تتبّع الإسناد'],
@@ -286,7 +320,11 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                 {g.chains.length > 1 && (
                   <label className="text-sm">
                     <span className="me-1">الطريق</span>
-                    <select value={journey.routeId ?? ''} onChange={(e) => update({ route: e.target.value, step: '0' })} className="select">
+                    <select
+                      value={journey.routeId ?? ''}
+                      onChange={(e) => update({ route: e.target.value, step: '0' })}
+                      className="select"
+                    >
                       {g.chains.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.routeNo}
@@ -305,7 +343,9 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                   selectedId={selectedId}
                   tabOrder={chain ? chain.nodeIds : []}
                   onHover={setHoverId}
-                  onSelect={(id) => (journey.active ? goStep(order.indexOf(id) >= 0 ? order.indexOf(id) : step) : update({ node: id }))}
+                  onSelect={(id) =>
+                    journey.active ? goStep(order.indexOf(id) >= 0 ? order.indexOf(id) : step) : update({ node: id })
+                  }
                   reducedMotion={reducedMotion}
                   ringIds={madar}
                 />
@@ -363,7 +403,9 @@ function stepText(
 
 function JourneySummary({ graph, order, dir }: { graph: IsnadGraph; order: string[]; dir: JourneyState['dir'] }) {
   const keys = order.slice(0, -1).map((_, i) => edgeKey(order, i, dir));
-  const edges = keys.map((k) => graph.edges.find((e) => `${e.from}>${e.to}` === k)).filter(Boolean) as IsnadGraph['edges'];
+  const edges = keys
+    .map((k) => graph.edges.find((e) => `${e.from}>${e.to}` === k))
+    .filter(Boolean) as IsnadGraph['edges'];
   const phrases = [...new Set(edges.map((e) => e.termAr).filter(Boolean))];
   const broken = edges.filter((e) => e.kind !== 'connected');
   return (

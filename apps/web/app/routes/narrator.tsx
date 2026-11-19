@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { Cite } from '~/components/Cite';
+import { ReportButton } from '~/components/ReportButton';
 import { ReviewBadge } from '~/components/ReviewBadge';
 import { dataContext, notFound } from '~/lib/data.server';
 import { FLAG_AR, hijri, RELATION_AR, ROLE_AR, UNAVAILABLE } from '~/lib/format';
@@ -19,7 +20,10 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
   const n = data.narrator;
   return [
     { title: `${n.displayNameAr} — رواة صحيح البخاري | رحلة الحديث` },
-    { name: 'description', content: [n.fullNameAr ?? n.displayNameAr, hijri(n.deathAh, n.deathAhMax, 'ت ')].filter(Boolean).join('، ') },
+    {
+      name: 'description',
+      content: [n.fullNameAr ?? n.displayNameAr, hijri(n.deathAh, n.deathAhMax, 'ت ')].filter(Boolean).join('، '),
+    },
   ];
 }
 
@@ -36,7 +40,10 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
         </h1>
         {p.fullNameAr && p.fullNameAr !== p.displayNameAr && <p className="text-ink-muted">{p.fullNameAr}</p>}
         <p className="text-sm text-ink-muted">{ROLE_AR[p.role]}</p>
-        <ReviewBadge status={p.reviewStatus} sourceKind={sourceKind} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ReviewBadge status={p.reviewStatus} sourceKind={sourceKind} />
+          <ReportButton entity="narrator" entityId={p.id} label={p.displayNameAr} />
+        </div>
       </header>
 
       <section className="pane">

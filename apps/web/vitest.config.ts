@@ -18,6 +18,7 @@ export default defineConfig({
               bindings: {
                 CORE_MIGRATIONS: await readD1Migrations('./migrations'),
                 SEARCH_MIGRATIONS: await readD1Migrations('./migrations-search'),
+                TURNSTILE_SECRET: 'test-secret',
               },
             },
           })),

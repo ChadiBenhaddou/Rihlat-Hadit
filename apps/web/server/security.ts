@@ -20,7 +20,12 @@ export const securityHeaders: MiddlewareHandler<{ Variables: SecurityVariables }
   const dev = import.meta.env.DEV;
   const csp = [
     "default-src 'self'",
-    dev ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'` : `script-src 'self' 'nonce-${nonce}'`,
+    // Turnstile (SPEC §14) is the only third-party script, loaded for the report form.
+    dev
+      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' https://challenges.cloudflare.com`
+      : `script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com`,
+    'frame-src https://challenges.cloudflare.com',
+    "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data:",

@@ -9,11 +9,11 @@ import {
 } from 'react-router';
 import amiriRegular from '@fontsource/amiri/files/amiri-arabic-400-normal.woff2?url';
 import type { Route } from './+types/root';
-import { nonceContext } from './context';
+import { cloudflareContext, nonceContext } from './context';
 import './app.css';
 
 export function loader({ context }: Route.LoaderArgs) {
-  return { nonce: context.get(nonceContext) };
+  return { nonce: context.get(nonceContext), turnstileSiteKey: context.get(cloudflareContext).env.TURNSTILE_SITE_KEY };
 }
 
 /** Preload the hadith font (SPEC §11): the matn is the page's main content. */

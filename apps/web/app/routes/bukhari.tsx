@@ -11,7 +11,10 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: 'صحيح البخاري — كتب الصحيح | رحلة الحديث' }, { name: 'description', content: 'كتب صحيح البخاري وأبوابها بتراجم البخاري.' }];
+  return [
+    { title: 'صحيح البخاري — كتب الصحيح | رحلة الحديث' },
+    { name: 'description', content: 'كتب صحيح البخاري وأبوابها بتراجم البخاري.' },
+  ];
 }
 
 export default function Bukhari({ loaderData }: Route.ComponentProps) {

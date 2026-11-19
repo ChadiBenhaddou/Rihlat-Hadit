@@ -446,3 +446,18 @@ body {
     text-decoration: underline;
   }
 }
+
+@layer components {
+  .dialog {
+    position: fixed;
+    inset-inline: 1rem;
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 41;
+    margin-inline: auto;
+    max-width: 32rem;
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    padding: 1.25rem;
+  }
+}

@@ -1,6 +1,14 @@
 import { Form } from 'react-router';
 
-export function SearchBox({ defaultValue = '', type = 'hadith', autoFocus = false }: { defaultValue?: string; type?: string; autoFocus?: boolean }) {
+export function SearchBox({
+  defaultValue = '',
+  type = 'hadith',
+  autoFocus = false,
+}: {
+  defaultValue?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) {
   return (
     <Form method="get" action="/search" role="search" className="flex gap-2">
       <input type="hidden" name="type" value={type} />

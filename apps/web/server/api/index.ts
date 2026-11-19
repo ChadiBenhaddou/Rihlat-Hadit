@@ -13,6 +13,7 @@ import { getHadith } from '../data/hadith';
 import { getNarrator } from '../data/narrators';
 import { searchHadith, searchNarrators } from '../data/search';
 import { problem } from '../problem';
+import { ReportInput, verifyTurnstile } from '../reports';
 import { currentDataVersion } from '../version';
 
 type ApiEnv = { Bindings: Env; Variables: { dataVersion: string; versioned: boolean } };
@@ -85,6 +86,44 @@ reads.get('/search', async (c) => {
 });
 
 export const api = new Hono<ApiEnv>();
+
+const clientIp = (c: Context) => c.req.header('cf-connecting-ip') ?? 'local';
+
+// Per-IP limits (SPEC §14): reports 5/min, search 60/min, everything else 300/min.
+api.use('*', async (c, next) => {
+  const path = c.req.path;
+  const limiter = path.endsWith('/reports')
+    ? c.env.REPORT_LIMITER
+    : path.endsWith('/search')
+      ? c.env.SEARCH_LIMITER
+      : c.env.API_LIMITER;
+  const { success } = await limiter.limit({ key: clientIp(c) });
+  if (!success) return problem(c, 429, 'Too Many Requests', 'rate limit exceeded; try again in a minute');
+  await next();
+});
+
+api.post('/reports', async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  const parsed = ReportInput.safeParse(raw);
+  if (!parsed.success) return problem(c, 400, 'Bad Request', 'invalid report');
+  const r = parsed.data;
+  if (!(await verifyTurnstile(c.env.TURNSTILE_SECRET, r.turnstileToken, c.req.header('cf-connecting-ip') ?? null))) {
+    return problem(c, 403, 'Forbidden', 'Turnstile verification failed');
+  }
+  const table = r.entity === 'hadith' ? 'hadiths' : 'narrators';
+  const exists = await coreDb(c.env, 'first-primary')
+    .prepare(`SELECT 1 FROM ${table} WHERE id = ?`)
+    .bind(r.entityId)
+    .first();
+  if (!exists) return problem(c, 404, 'Not Found', `no such ${r.entity}`);
+  const row = await coreDb(c.env, 'first-primary')
+    .prepare('INSERT INTO reports (entity, entity_id, message, contact) VALUES (?, ?, ?, ?) RETURNING id')
+    .bind(r.entity, r.entityId, r.message, r.contact ?? null)
+    .first<{ id: number }>();
+  // Log the event only: never the message or the contact address.
+  console.log(JSON.stringify({ level: 'info', msg: 'report_created', entity: r.entity, id: row?.id }));
+  return c.json({ id: row?.id }, 201);
+});
 
 // Unversioned: resolve the current version, short cache.
 api.use('*', async (c, next) => {

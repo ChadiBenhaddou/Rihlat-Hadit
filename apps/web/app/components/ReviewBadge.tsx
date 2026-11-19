@@ -4,7 +4,13 @@ import type { ReviewStatus, SourceInfo } from '@isnad/shared';
  * Principle 3: unreviewed data shows a visible badge, and a fact resting only on
  * a dataset is labelled «مصدر ثانوي» until a reviewer adds a primary citation.
  */
-export function ReviewBadge({ status, sourceKind }: { status: ReviewStatus; sourceKind?: SourceInfo['kind'] | undefined }) {
+export function ReviewBadge({
+  status,
+  sourceKind,
+}: {
+  status: ReviewStatus;
+  sourceKind?: SourceInfo['kind'] | undefined;
+}) {
   return (
     <span className="inline-flex flex-wrap gap-1 align-middle">
       {status !== 'reviewed' && (

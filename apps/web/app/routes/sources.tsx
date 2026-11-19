@@ -25,7 +25,9 @@ export default function Sources({ loaderData }: Route.ComponentProps) {
   return (
     <main id="main" className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <h1 className="text-2xl font-semibold">المصادر وتراخيصها</h1>
-      <p className="text-ink-muted">كل معلومة في الموقع تحيل إلى أحد هذه المصادر. تُذكر صيغة الإسناد المطلوبة في الترخيص كما هي.</p>
+      <p className="text-ink-muted">
+        كل معلومة في الموقع تحيل إلى أحد هذه المصادر. تُذكر صيغة الإسناد المطلوبة في الترخيص كما هي.
+      </p>
       <ul className="space-y-4">
         {loaderData.sources.map((s) => (
           <li key={s.slug} className="pane space-y-1">
@@ -61,7 +63,10 @@ export default function Sources({ loaderData }: Route.ComponentProps) {
       </ul>
       <section className="space-y-1 text-sm text-ink-muted">
         <h2 className="font-semibold text-ink">الخطوط</h2>
-        <p>خط Amiri لنصوص الحديث وخط IBM Plex Sans Arabic للواجهة، وكلاهما برخصة SIL Open Font License، ويُستضافان على هذا الموقع.</p>
+        <p>
+          خط Amiri لنصوص الحديث وخط IBM Plex Sans Arabic للواجهة، وكلاهما برخصة SIL Open Font License، ويُستضافان على هذا
+          الموقع.
+        </p>
       </section>
     </main>
   );

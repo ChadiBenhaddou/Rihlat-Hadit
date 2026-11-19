@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development. Real secrets go in `wrangler secret put` only.
+# Cloudflare's documented always-pass Turnstile TEST secret:
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+ACCESS_AUD=local-placeholder

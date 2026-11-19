@@ -29,9 +29,17 @@
   ],
   "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000003" }],
   "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data" }],
+  // Per-IP rate limits (SPEC §14): search 60/min, reports 5/min, other API calls 300/min.
+  "ratelimits": [
+    { "name": "SEARCH_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } },
+    { "name": "REPORT_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
+    { "name": "API_LIMITER", "namespace_id": "1003", "simple": { "limit": 300, "period": 60 } }
+  ],
   "vars": {
     "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
-    "SITE_URL": "http://localhost:5173"
+    "SITE_URL": "http://localhost:5173",
+    // Cloudflare's documented always-pass TEST site key; replace per environment.
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
   },
   "env": {
     "preview": {
@@ -52,9 +60,15 @@
       ],
       "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000013" }],
       "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data-preview" }],
+      "ratelimits": [
+        { "name": "SEARCH_LIMITER", "namespace_id": "2001", "simple": { "limit": 60, "period": 60 } },
+        { "name": "REPORT_LIMITER", "namespace_id": "2002", "simple": { "limit": 5, "period": 60 } },
+        { "name": "API_LIMITER", "namespace_id": "2003", "simple": { "limit": 300, "period": 60 } }
+      ],
       "vars": {
         "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
-        "SITE_URL": "<https://preview…>"
+        "SITE_URL": "<https://preview…>",
+        "TURNSTILE_SITE_KEY": "<preview site key>"
       }
     }
   }

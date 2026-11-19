@@ -6,6 +6,7 @@ export type Db = D1DatabaseSession;
 
 /** A session for one request against the core database. */
 export function coreDb(env: Env, bookmark?: string | null): Db {
+  // Writes pass 'first-primary'; reads may use any replica.
   return env.DB.withSession(bookmark ?? 'first-unconstrained');
 }
 

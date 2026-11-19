@@ -14,16 +14,23 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   if (!q) return { q, type, result: null };
   const { env, db, search, dataVersion } = await dataContext(context);
   const ip = request.headers.get('cf-connecting-ip') ?? 'local';
-  const limiter = (env as Env & { SEARCH_LIMITER?: RateLimit }).SEARCH_LIMITER;
-  if (limiter && !(await limiter.limit({ key: ip })).success) throw new Response('طلبات كثيرة، حاول بعد قليل', { status: 429 });
-  const result = type === 'narrator' ? await searchNarrators(db, search, q, cursor, dataVersion) : await searchHadith(db, search, q, cursor, dataVersion);
+  if (!(await env.SEARCH_LIMITER.limit({ key: ip })).success)
+    throw new Response('طلبات كثيرة، حاول بعد قليل', { status: 429 });
+  const result =
+    type === 'narrator'
+      ? await searchNarrators(db, search, q, cursor, dataVersion)
+      : await searchHadith(db, search, q, cursor, dataVersion);
   // A bare number that exists goes straight to the entry.
-  if (type === 'hadith' && result.numberMatch != null && result.results.length <= 1 && cursor === 0) throw redirect(`/bukhari/${result.numberMatch}`);
+  if (type === 'hadith' && result.numberMatch != null && result.results.length <= 1 && cursor === 0)
+    throw redirect(`/bukhari/${result.numberMatch}`);
   return { q, type, result };
 }
 
 export function meta({ loaderData: data }: Route.MetaArgs) {
-  return [{ title: data?.q ? `بحث: ${data.q} | رحلة الحديث` : 'البحث | رحلة الحديث' }, { name: 'robots', content: 'noindex' }];
+  return [
+    { title: data?.q ? `بحث: ${data.q} | رحلة الحديث` : 'البحث | رحلة الحديث' },
+    { name: 'robots', content: 'noindex' },
+  ];
 }
 
 /** Highlight on the original text: tokenize with tashkeel intact, normalize each word, mark matches (SPEC §9). */
@@ -43,7 +50,11 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
 export default function Search({ loaderData }: Route.ComponentProps) {
   const { q, type, result } = loaderData;
   const tab = (t: string, label: string) => (
-    <Link className={`seg${type === t ? ' seg-on' : ''}`} to={`/search?type=${t}&q=${encodeURIComponent(q)}`} aria-current={type === t ? 'page' : undefined}>
+    <Link
+      className={`seg${type === t ? ' seg-on' : ''}`}
+      to={`/search?type=${t}&q=${encodeURIComponent(q)}`}
+      aria-current={type === t ? 'page' : undefined}
+    >
       {label}
     </Link>
   );
@@ -58,7 +69,9 @@ export default function Search({ loaderData }: Route.ComponentProps) {
       {result && (
         <>
           <p className="text-sm text-ink-muted" role="status">
-            {result.results.length ? `النتائج${result.nextCursor ? ' (الصفحة الحالية)' : ''}: ${result.results.length}` : 'لا نتائج. جرّب كلمات أقل أو صيغة أخرى.'}
+            {result.results.length
+              ? `النتائج${result.nextCursor ? ' (الصفحة الحالية)' : ''}: ${result.results.length}`
+              : 'لا نتائج. جرّب كلمات أقل أو صيغة أخرى.'}
           </p>
           <ol className="space-y-3">
             {result.results.map((r) =>
@@ -80,7 +93,12 @@ export default function Search({ loaderData }: Route.ComponentProps) {
                     <div className="font-semibold">{r.nameAr}</div>
                     {/* Death year, city and tabaqa in every result: many narrators share names (SPEC §9). */}
                     <div className="text-sm text-ink-muted">
-                      {[hijri(r.deathAh, null, 'ت ') ?? 'سنة الوفاة غير متوفرة', r.placeAr ?? 'البلد غير متوفر', r.tabaqa != null ? `الطبقة ${r.tabaqa}` : 'الطبقة غير متوفرة', `${r.hadithCount} حديثًا`].join(' · ')}
+                      {[
+                        hijri(r.deathAh, null, 'ت ') ?? 'سنة الوفاة غير متوفرة',
+                        r.placeAr ?? 'البلد غير متوفر',
+                        r.tabaqa != null ? `الطبقة ${r.tabaqa}` : 'الطبقة غير متوفرة',
+                        `${r.hadithCount} حديثًا`,
+                      ].join(' · ')}
                     </div>
                   </Link>
                 </li>

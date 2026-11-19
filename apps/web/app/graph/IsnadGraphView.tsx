@@ -66,7 +66,17 @@ function midpoint(points: Point[]): Point {
 
 const KIND_AR: Record<string, string> = { suspended: 'تعليق', gap: 'انقطاع', uncertain: 'غير مؤكد' };
 
-export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, onHover, onSelect, reducedMotion, ringIds = [] }: Props) {
+export function IsnadGraphView({
+  graph,
+  focus,
+  hoverId,
+  selectedId,
+  tabOrder,
+  onHover,
+  onSelect,
+  reducedMotion,
+  ringIds = [],
+}: Props) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [error, setError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -98,7 +108,10 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
     svg.call(z);
     const { width, height } = svgRef.current.getBoundingClientRect();
     const k = Math.min(1, width / (layout.width || 1), height / (layout.height || 1));
-    svg.call(z.transform, zoomIdentity.translate((width - layout.width * k) / 2, Math.max(0, (height - layout.height * k) / 2)).scale(k));
+    svg.call(
+      z.transform,
+      zoomIdentity.translate((width - layout.width * k) / 2, Math.max(0, (height - layout.height * k) / 2)).scale(k),
+    );
     return () => {
       svg.on('.zoom', null);
     };
@@ -116,7 +129,9 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
     const maxY = Math.max(...boxes.map((b) => b.y + b.height));
     const { width, height } = svgRef.current.getBoundingClientRect();
     const k = Math.max(0.6, Math.min(1.4, width / (maxX - minX + 240), height / (maxY - minY + 200)));
-    const t = zoomIdentity.translate(width / 2 - ((minX + maxX) / 2) * k, height / 2 - ((minY + maxY) / 2) * k).scale(k);
+    const t = zoomIdentity
+      .translate(width / 2 - ((minX + maxX) / 2) * k, height / 2 - ((minY + maxY) / 2) * k)
+      .scale(k);
     const svg = select(svgRef.current);
     if (reducedMotion) svg.call(zoomRef.current.transform, t);
     else svg.transition().duration(500).call(zoomRef.current.transform, t);
@@ -132,7 +147,15 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
       {!layout && <div className="absolute inset-0 grid place-items-center text-ink-muted">جارٍ رسم المخطط…</div>}
       <svg ref={svgRef} className="h-full w-full touch-none select-none" role="group" aria-label="مخطط الإسناد">
         <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <marker
+            id="arrow"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
             <path d="M0,0 L10,5 L0,10 z" fill="var(--color-line)" />
           </marker>
         </defs>
@@ -144,7 +167,8 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
             const isActive = focus.activeEdge === le.key;
             const hot = hoverId != null && (e.from === hoverId || e.to === hoverId);
             const width = 1.5 + Math.min(4, e.chainIds.length - 1) * 0.75;
-            const dash = e.kind === 'uncertain' ? '8 6' : e.kind === 'suspended' || e.kind === 'gap' ? '1 7' : undefined;
+            const dash =
+              e.kind === 'uncertain' ? '8 6' : e.kind === 'suspended' || e.kind === 'gap' ? '1 7' : undefined;
             const mid = midpoint(le.points);
             const label = [e.termAr, KIND_AR[e.kind]].filter(Boolean).join(' · ');
             return (
@@ -170,8 +194,18 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
                   />
                 )}
                 {label && (
-                  <g className={isActive && !reducedMotion ? 'journey-term' : undefined} transform={`translate(${mid.x},${mid.y})`}>
-                    <rect x={-label.length * 3.6 - 8} y={-11} width={label.length * 7.2 + 16} height={22} rx={6} className="fill-[var(--color-bg)]" />
+                  <g
+                    className={isActive && !reducedMotion ? 'journey-term' : undefined}
+                    transform={`translate(${mid.x},${mid.y})`}
+                  >
+                    <rect
+                      x={-label.length * 3.6 - 8}
+                      y={-11}
+                      width={label.length * 7.2 + 16}
+                      height={22}
+                      rx={6}
+                      className="fill-[var(--color-bg)]"
+                    />
                     <text textAnchor="middle" dominantBaseline="central" className="graph-term">
                       {label}
                     </text>
@@ -217,7 +251,16 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
                   }}
                 >
                   {(ringIds.includes(id) || n.role === 'prophet') && (
-                    <rect x={-5} y={-5} width={p.width + 10} height={p.height + 10} rx={14} fill="none" stroke="var(--color-accent)" strokeWidth={1.5} />
+                    <rect
+                      x={-5}
+                      y={-5}
+                      width={p.width + 10}
+                      height={p.height + 10}
+                      rx={14}
+                      fill="none"
+                      stroke="var(--color-accent)"
+                      strokeWidth={1.5}
+                    />
                   )}
                   <rect
                     width={p.width}
@@ -226,9 +269,17 @@ export function IsnadGraphView({ graph, focus, hoverId, selectedId, tabOrder, on
                     fill="var(--color-surface)"
                     stroke={sel || hot || active ? 'var(--color-accent)' : tabaqaVar(n.tabaqa)}
                     strokeWidth={sel || active ? 3 : 2}
-                    strokeDasharray={n.role === 'unresolved' || (n.deathAh == null && n.role !== 'prophet') ? '5 4' : undefined}
+                    strokeDasharray={
+                      n.role === 'unresolved' || (n.deathAh == null && n.role !== 'prophet') ? '5 4' : undefined
+                    }
                   />
-                  <text x={p.width / 2} y={meta ? 21 : p.height / 2} textAnchor="middle" dominantBaseline="central" className="graph-name">
+                  <text
+                    x={p.width / 2}
+                    y={meta ? 21 : p.height / 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="graph-name"
+                  >
                     {labelOf(n)}
                   </text>
                   {meta && (

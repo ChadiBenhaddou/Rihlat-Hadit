@@ -42,7 +42,9 @@ export function NarratorCard({ node, dataVersion }: { node: GraphNode; dataVersi
     );
   }
   const p = profile;
-  const sourceKind = p?.sources.find((s) => p.citations.some((c) => c.id === p.datesCitationId && c.sourceSlug === s.slug))?.kind;
+  const sourceKind = p?.sources.find((s) =>
+    p.citations.some((c) => c.id === p.datesCitationId && c.sourceSlug === s.slug),
+  )?.kind;
   const lived = p?.places.filter((x) => x.relation === 'lived') ?? [];
   return (
     <div className="space-y-3">
@@ -59,7 +61,8 @@ export function NarratorCard({ node, dataVersion }: { node: GraphNode; dataVersi
           <dl className="facts">
             <dt>الوفاة</dt>
             <dd>
-              {hijri(p.deathAh, p.deathAhMax) ?? UNAVAILABLE} <Cite ids={[p.datesCitationId]} citations={p.citations} sources={p.sources} />
+              {hijri(p.deathAh, p.deathAhMax) ?? UNAVAILABLE}{' '}
+              <Cite ids={[p.datesCitationId]} citations={p.citations} sources={p.sources} />
             </dd>
             <dt>الطبقة</dt>
             <dd>
@@ -74,7 +77,8 @@ export function NarratorCard({ node, dataVersion }: { node: GraphNode; dataVersi
               <>
                 <dt>خلاصة الحكم</dt>
                 <dd>
-                  {p.summaryGrade.textAr} <Cite ids={[p.summaryGrade.citationId]} citations={p.citations} sources={p.sources} />
+                  {p.summaryGrade.textAr}{' '}
+                  <Cite ids={[p.summaryGrade.citationId]} citations={p.citations} sources={p.sources} />
                 </dd>
               </>
             )}
@@ -98,7 +102,9 @@ export function NarratorCard({ node, dataVersion }: { node: GraphNode; dataVersi
                   </li>
                 ))}
               </ul>
-              {p.gradings.length > 3 && <p className="text-sm text-ink-muted">و{p.gradings.length - 3} قولًا آخر في صفحة الراوي.</p>}
+              {p.gradings.length > 3 && (
+                <p className="text-sm text-ink-muted">و{p.gradings.length - 3} قولًا آخر في صفحة الراوي.</p>
+              )}
             </section>
           )}
           <p className="text-sm text-ink-muted">يروي في {p.hadithCount} حديثًا من الصحيح المحمَّل.</p>
