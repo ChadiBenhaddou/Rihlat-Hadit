@@ -26,11 +26,14 @@
     "d3-transition": "^3.0.2",
     "d3-zoom": "^3.0.1",
     "elkjs": "^0.12.1",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
     "hono": "^4.13.19",
     "isbot": "^5.1.32",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router": "^8.5.2",
+    "sigma": "^4.0.6",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -156,3 +156,32 @@ export const SearchResponse = z.object({
   nextCursor: z.string().nullable(),
 });
 export type SearchResponse = z.infer<typeof SearchResponse>;
+
+export const NetworkResponse = z.object({
+  dataVersion: z.string(),
+  center: z.string(),
+  depth: z.number().int().min(1).max(2),
+  truncated: z.boolean(),
+  nodes: z.array(
+    z.object({
+      slug: z.string(),
+      nameAr: z.string(),
+      tabaqa: z.number().int().nullable(),
+      deathAh: z.number().int().nullable(),
+      role: z.string(),
+    }),
+  ),
+  /** teacher → student, with the number of Bukhari entries carrying that link. */
+  edges: z.array(z.object({ teacher: z.string(), student: z.string(), count: z.number().int() })),
+});
+export type NetworkResponse = z.infer<typeof NetworkResponse>;
+
+export const SharedResponse = z.object({
+  dataVersion: z.string(),
+  a: z.string(),
+  b: z.string(),
+  /** Entries where the two are adjacent in a chain, either way round. */
+  numbers: z.array(z.number().int()),
+  nextCursor: z.string().nullable(),
+});
+export type SharedResponse = z.infer<typeof SharedResponse>;

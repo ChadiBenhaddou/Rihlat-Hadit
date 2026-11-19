@@ -1,4 +1,5 @@
-import { Link } from 'react-router';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { Cite } from '~/components/Cite';
 import { ReportButton } from '~/components/ReportButton';
 import { ReviewBadge } from '~/components/ReviewBadge';
@@ -6,6 +7,9 @@ import { dataContext, notFound } from '~/lib/data.server';
 import { FLAG_AR, hijri, RELATION_AR, ROLE_AR, UNAVAILABLE } from '~/lib/format';
 import { getNarrator } from '../../server/data/narrators';
 import type { Route } from './+types/narrator';
+
+// WebGL network: loaded only when opened, never in the page's initial JavaScript.
+const NetworkView = lazy(() => import('~/network/NetworkView'));
 
 export async function loader({ params, context }: Route.LoaderArgs) {
   if (!/^[a-z0-9-]{1,64}$/.test(params.slug)) notFound();
@@ -29,6 +33,22 @@ export function meta({ loaderData: data }: Route.MetaArgs) {
 
 export default function Narrator({ loaderData }: Route.ComponentProps) {
   const p = loaderData.narrator;
+  const [params, setParams] = useSearchParams();
+  const showNet = params.get('net') === '1';
+  // WebGL needs the browser: the network mounts after hydration, never during SSR.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const netLayout = params.get('nl') === 'tabaqa' ? 'tabaqa' : 'fa2';
+  const setParam = (k: string, v: string | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (v == null) next.delete(k);
+        else next.set(k, v);
+        return next;
+      },
+      { replace: true, preventScrollReset: true },
+    );
   const cite = (ids: (number | null)[]) => <Cite ids={ids} citations={p.citations} sources={p.sources} />;
   const sourceKind = p.sources[0]?.kind;
   return (
@@ -139,6 +159,28 @@ export default function Narrator({ loaderData }: Route.ComponentProps) {
           </section>
         ))}
       </div>
+
+      <section className="pane" aria-labelledby="net-title">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="net-title" className="font-semibold">
+            شبكة الرواة
+          </h2>
+          <button className="btn text-sm" onClick={() => setParam('net', showNet ? null : '1')} aria-expanded={showNet}>
+            {showNet ? 'إخفاء الشبكة' : 'عرض الشبكة'}
+          </button>
+        </div>
+        {showNet && mounted && p.role !== 'prophet' && (
+          <Suspense fallback={<p className="text-ink-muted">جارٍ تحميل الشبكة…</p>}>
+            <NetworkView
+              center={p.slug}
+              centerName={p.displayNameAr}
+              dataVersion={p.dataVersion}
+              layoutMode={netLayout}
+              onLayoutMode={(m) => setParam('nl', m === 'tabaqa' ? 'tabaqa' : null)}
+            />
+          </Suspense>
+        )}
+      </section>
 
       <section className="pane">
         <h2 className="mb-2 font-semibold">أحاديثه في الصحيح ({p.hadithCount})</h2>

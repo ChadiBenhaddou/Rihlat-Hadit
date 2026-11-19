@@ -89,7 +89,8 @@ export function toGraph(
   const { citations, sources } = splitCitations(citationRows);
   const rows = links.map((r) => ({ ...r, isSuspended: Boolean(r.isSuspended) }));
   const places = new Map<number, { nameAr: string; citationId: number | null }[]>();
-  for (const p of placeRows) places.set(p.narratorId, [...(places.get(p.narratorId) ?? []), { nameAr: p.nameAr, citationId: p.citationId }]);
+  for (const p of placeRows)
+    places.set(p.narratorId, [...(places.get(p.narratorId) ?? []), { nameAr: p.nameAr, citationId: p.citationId }]);
   return { graph: assembleGraph(rows, scope, dataVersion, citations, places), sources };
 }
 
@@ -97,5 +98,11 @@ export async function getGroupGraph(db: Db, groupId: number, dataVersion: string
   const [links, cites, places] = await db.batch(groupGraphStatements(db, groupId));
   const linkRows = (links?.results ?? []) as LinkRow[];
   if (linkRows.length === 0) return null;
-  return toGraph(linkRows, (cites?.results ?? []) as CitationRow[], { kind: 'group', groupId }, dataVersion, (places?.results ?? []) as PlaceRow[]);
+  return toGraph(
+    linkRows,
+    (cites?.results ?? []) as CitationRow[],
+    { kind: 'group', groupId },
+    dataVersion,
+    (places?.results ?? []) as PlaceRow[],
+  );
 }

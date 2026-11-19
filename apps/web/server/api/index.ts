@@ -11,6 +11,7 @@ import { getBook, listBooks } from '../data/books';
 import { getGroupGraph } from '../data/graph';
 import { getHadith } from '../data/hadith';
 import { getNarrator } from '../data/narrators';
+import { getNetwork, getShared } from '../data/network';
 import { searchHadith, searchNarrators } from '../data/search';
 import { problem } from '../problem';
 import { ReportInput, verifyTurnstile } from '../reports';
@@ -68,6 +69,27 @@ reads.get('/narrators/:slug', async (c) => {
   if (!slug.success) return problem(c, 400, 'Bad Request');
   const body = await getNarrator(coreDb(c.env), slug.data, c.get('dataVersion'));
   return body ? c.json(body) : problem(c, 404, 'Not Found', 'no such narrator');
+});
+
+const NetworkQuery = z.object({
+  depth: z.coerce.number().int().min(1).max(2).default(1),
+  limit: z.coerce.number().int().min(10).max(500).default(200),
+});
+
+reads.get('/narrators/:slug/network', async (c) => {
+  const slug = Slug.safeParse(c.req.param('slug'));
+  const q = NetworkQuery.safeParse(c.req.query());
+  if (!slug.success || !q.success) return problem(c, 400, 'Bad Request', 'depth is 1–2 and limit 10–500');
+  const body = await getNetwork(coreDb(c.env), slug.data, q.data.depth as 1 | 2, q.data.limit, c.get('dataVersion'));
+  return body ? c.json(body) : problem(c, 404, 'Not Found', 'no such narrator');
+});
+
+reads.get('/narrators/:a/shared/:b', async (c) => {
+  const a = Slug.safeParse(c.req.param('a'));
+  const b = Slug.safeParse(c.req.param('b'));
+  const cursor = z.coerce.number().int().min(0).max(100_000).default(0).safeParse(c.req.query('cursor'));
+  if (!a.success || !b.success || !cursor.success) return problem(c, 400, 'Bad Request');
+  return c.json(await getShared(coreDb(c.env), a.data, b.data, cursor.data, c.get('dataVersion')));
 });
 
 const SearchQuery = z.object({

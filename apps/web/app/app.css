@@ -518,3 +518,13 @@ body {
     fill: var(--color-hairline);
   }
 }
+
+@layer components {
+  .network-canvas {
+    height: min(70vh, 40rem);
+    min-height: 22rem;
+    border-radius: 0.5rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-hairline);
+  }
+}

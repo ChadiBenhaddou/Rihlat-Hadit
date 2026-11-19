@@ -6,8 +6,10 @@ import {
   HadithResponse,
   IsnadGraph,
   NarratorProfile,
+  NetworkResponse,
   ProblemDetails,
   SearchResponse,
+  SharedResponse,
 } from '@isnad/shared';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { ftsExpression } from '../../server/data/search';
@@ -117,5 +119,25 @@ describe('versioned paths', () => {
     expect(v.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
     expect((await get('/hadith/bukhari/1')).headers.get('Cache-Control')).toBe('public, max-age=60');
     expect((await get('/d/old-version/hadith/bukhari/1')).status).toBe(404);
+  });
+});
+
+describe('narrator network', () => {
+  it('returns the ego network at depth 1 and 2, capped and validated', async () => {
+    const d1 = NetworkResponse.parse(await (await get('/narrators/r13/network?depth=1')).json());
+    expect(d1.nodes.map((n) => n.slug).sort()).toEqual(['r12', 'r13', 'r14', 'r15']);
+    expect(d1.edges).toContainEqual({ teacher: 'r14', student: 'r13', count: 1 });
+    const d2 = NetworkResponse.parse(await (await get('/narrators/r13/network?depth=2')).json());
+    expect(d2.nodes.map((n) => n.slug)).toEqual(expect.arrayContaining(['r10', 'r11']));
+    expect((await get('/narrators/r13/network?depth=3')).status).toBe(400);
+    expect((await get('/narrators/r13/network?limit=501')).status).toBe(400);
+  });
+
+  it('lists entries where two narrators are adjacent, either way round', async () => {
+    const ab = SharedResponse.parse(await (await get('/narrators/r12/shared/r13')).json());
+    const ba = SharedResponse.parse(await (await get('/narrators/r13/shared/r12')).json());
+    expect(ab.numbers).toEqual([1]);
+    expect(ba.numbers).toEqual([1]);
+    expect(SharedResponse.parse(await (await get('/narrators/r11/shared/r14')).json()).numbers).toEqual([]);
   });
 });
