@@ -1,4 +1,4 @@
-import type { LinkRow } from '@isnad/graph';
+import { nodeIdForLink, type LinkRow } from '@isnad/graph';
 import type { HadithResponse, ReviewStatus } from '@isnad/shared';
 import type { Db } from '../db';
 import type { CitationRow } from './common';
@@ -53,8 +53,18 @@ export async function getHadith(
   ]);
   const h = (main?.results?.[0] ?? null) as HadithRow | null;
   if (!h) return null;
+  const linkRows = (links?.results ?? []) as (LinkRow & { mentionStart: number | null; mentionEnd: number | null })[];
+  const seen = new Set<string>();
+  const mentions = linkRows.flatMap((l) => {
+    if (l.mentionStart == null || l.mentionEnd == null) return [];
+    const key = `${l.mentionStart}:${l.mentionEnd}`;
+    if (seen.has(key)) return []; // routes split at ح share mentions
+    seen.add(key);
+    return [{ start: l.mentionStart, end: l.mentionEnd, nodeId: nodeIdForLink(l) }];
+  });
+  mentions.sort((a, b) => a.start - b.start);
   const { graph, sources } = toGraph(
-    (links?.results ?? []) as LinkRow[],
+    linkRows,
     (cites?.results ?? []) as CitationRow[],
     { kind: 'hadith', collection, number },
     dataVersion,
@@ -79,6 +89,7 @@ export async function getHadith(
     citationId: h.citation_id,
     reviewStatus: h.review_status,
     graph,
+    mentions,
     sources,
   };
 }

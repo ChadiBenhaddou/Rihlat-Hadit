@@ -18,6 +18,7 @@ export function loader({ context }: Route.LoaderArgs) {
 
 /** Preload the hadith font (SPEC §11): the matn is the page's main content. */
 export const links: Route.LinksFunction = () => [
+  { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
   { rel: 'preload', href: amiriRegular, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' },
 ];
 
@@ -37,11 +38,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
           تخطَّ إلى المحتوى
         </a>
         <header className="border-b border-hairline bg-surface">
-          <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
             <a href="/" className="font-ui text-lg font-semibold text-ink">
-              رحلة الحديث
+              رحلة الحديث <span className="text-sm font-normal text-ink-muted">في صحيح البخاري</span>
             </a>
-            <span className="text-sm text-ink-muted">في صحيح البخاري</span>
+            <nav aria-label="الأقسام" className="flex flex-wrap gap-4 text-sm">
+              <a className="hover:underline" href="/bukhari">
+                الكتب
+              </a>
+              <a className="hover:underline" href="/search">
+                البحث
+              </a>
+              <a className="hover:underline" href="/methodology">
+                المنهجية
+              </a>
+              <a className="hover:underline" href="/sources">
+                المصادر
+              </a>
+            </nav>
           </div>
         </header>
         {children}

@@ -17,21 +17,24 @@ export function computeIndicators(g: IsnadGraph): Indicator[] {
     const between = c.nodeIds.slice(1).filter((id) => g.nodes.find((n) => n.id === id)?.role !== 'prophet');
     return { chain: c, length: between.length };
   });
-  const shortest = Math.min(...lengths.map((l) => l.length));
+  // Suspended routes skip narrators, so they are not compared for length.
+  const connected = lengths.filter((l) => !l.chain.isSuspended);
+  const measured = connected.length ? connected : lengths;
+  const shortest = Math.min(...measured.map((l) => l.length));
   out.push({
     key: 'chain_length',
     labelAr: 'طول الإسناد',
     formulaAr: 'عدد الرواة بين البخاري والنبي ﷺ (أو آخر راوٍ مذكور) في كل طريق.',
     scopeAr: SCOPE,
     inputs: lengths.map((l) => ({
-      labelAr: `الطريق ${l.chain.routeNo}${g.chains.some((c) => c.hadithNumber !== l.chain.hadithNumber) ? ` (رقم ${l.chain.hadithNumber})` : ''}`,
+      labelAr: `الطريق ${l.chain.routeNo}${g.chains.some((c) => c.hadithNumber !== l.chain.hadithNumber) ? ` (رقم ${l.chain.hadithNumber})` : ''}${l.chain.isSuspended ? ' — معلّق، لا يُقارَن' : ''}`,
       value: String(l.length),
       citationIds: [],
     })),
     valueAr:
       g.chains.every((c) => c.terminus === 'prophet') && shortest === 3
         ? `${shortest} — من الثلاثيات`
-        : `أقصر طريق: ${shortest}`,
+        : `أقصر طريق${connected.length ? ' متصل' : ''}: ${shortest}`,
   });
 
   // الانقطاع: links of kind suspended or gap, and unresolved mentions.

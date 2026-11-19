@@ -138,3 +138,311 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* --- Components (logical properties only: RTL first) ------------------------ */
+@layer components {
+  .link {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .btn,
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-bg);
+  }
+  .select {
+    border: 1px solid var(--color-line);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    padding: 0.3rem 0.5rem;
+  }
+  .seg {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .seg-on {
+    background: var(--color-accent);
+    color: var(--color-bg);
+  }
+  .badge {
+    display: inline-block;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    padding: 0 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.5rem;
+    color: var(--color-ink-muted);
+    background: var(--color-bg);
+  }
+  .chip {
+    display: inline-block;
+    border: 1px solid var(--color-hairline);
+    border-radius: 0.375rem;
+    padding: 0.1rem 0.5rem;
+    background: var(--color-surface);
+  }
+  .card {
+    border: 1px solid var(--color-hairline);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    padding: 0.75rem 1rem;
+  }
+  .card:hover {
+    border-color: var(--color-line);
+  }
+  .pane {
+    border: 1px solid var(--color-hairline);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    padding: 1rem;
+    min-width: 0;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1rem;
+  }
+  .facts dt {
+    color: var(--color-ink-muted);
+  }
+  .cite-trigger {
+    font-size: 0.75rem;
+    color: var(--color-accent);
+    vertical-align: super;
+    cursor: pointer;
+  }
+  .popover {
+    z-index: 50;
+    max-width: min(22rem, calc(100vw - 2rem));
+    border: 1px solid var(--color-line);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    padding: 0.75rem 1rem;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+  }
+  .entry-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+  }
+  .entry-row:hover {
+    background: var(--color-surface);
+  }
+  .summary {
+    margin-top: 0.75rem;
+    border: 1px solid var(--color-hairline);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Hadith page: three panes on desktop; graph full width below. */
+  .hadith-layout {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 768px) {
+    .hadith-layout {
+      grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
+    }
+  }
+  @media (min-width: 1200px) {
+    .hadith-layout {
+      grid-template-columns: minmax(0, 27rem) minmax(0, 1fr) minmax(0, 21rem);
+    }
+  }
+  .graph-pane {
+    display: flex;
+    flex-direction: column;
+  }
+  @media (max-width: 767px) {
+    /* Phones: the graph runs first and full width; the text follows (SPEC §11). */
+    .graph-pane {
+      order: -1;
+    }
+  }
+  .graph-canvas {
+    height: min(72vh, 46rem);
+    min-height: 24rem;
+    border-radius: 0.5rem;
+    background: var(--color-bg);
+    margin-top: 0.75rem;
+  }
+  .journey-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  @media (max-width: 767px) {
+    /* Journey controls stay fixed at the bottom on phones (SPEC §11). */
+    .journey-controls {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      background: var(--color-surface);
+      padding-block: 0.5rem;
+      order: 3;
+    }
+  }
+
+  .isnad-text {
+    font-size: 0.86em;
+    color: var(--color-ink-muted);
+    margin-block-end: 0.5rem;
+  }
+  .matn-text {
+    color: var(--color-ink);
+  }
+  .mention {
+    border-radius: 0.25rem;
+    text-decoration: underline dotted var(--color-line);
+    text-underline-offset: 6px;
+    cursor: pointer;
+  }
+  .mention-hot,
+  .mention:focus-visible {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    color: var(--color-ink);
+  }
+  .hadith-snippet {
+    font-family: var(--font-hadith);
+    font-size: 1.15rem;
+    line-height: 2;
+  }
+  mark {
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    color: inherit;
+    border-radius: 0.2rem;
+  }
+
+  /* Graph */
+  .graph-node {
+    cursor: pointer;
+    outline: none;
+    transition: opacity 300ms;
+  }
+  .graph-node:focus-visible rect {
+    stroke: var(--color-focus);
+    stroke-width: 3;
+  }
+  .graph-edge {
+    transition: opacity 300ms;
+  }
+  .graph-name {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    fill: var(--color-ink);
+  }
+  .graph-meta {
+    font-family: var(--font-ui);
+    font-size: 11.5px;
+    fill: var(--color-ink-muted);
+  }
+  .graph-term {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    fill: var(--color-ink);
+  }
+  /* Journey: the link draws itself in 600 ms, its phrase fades in at the midpoint,
+     the next node scales from 0.9 to 1 (SPEC §12). */
+  .journey-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 600ms ease-in-out forwards;
+  }
+  .journey-term {
+    opacity: 0;
+    animation: fade 300ms ease-in-out 300ms forwards;
+  }
+  .journey-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: arrive 500ms ease-in-out 300ms both;
+  }
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes fade {
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes arrive {
+    from {
+      scale: 0.9;
+    }
+    to {
+      scale: 1;
+    }
+  }
+
+  /* Bottom sheet on smaller screens */
+  .sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.35);
+    z-index: 40;
+  }
+  .sheet {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 41;
+    max-height: 80dvh;
+    overflow-y: auto;
+    border-start-start-radius: 1rem;
+    border-start-end-radius: 1rem;
+    background: var(--color-surface);
+    padding: 1.25rem 1rem 1.5rem;
+  }
+
+  /* Long-form Arabic pages */
+  .prose-ar h1 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-block-end: 1rem;
+  }
+  .prose-ar h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-block: 1.75rem 0.5rem;
+  }
+  .prose-ar p,
+  .prose-ar li {
+    line-height: 2;
+  }
+  .prose-ar ul {
+    list-style: disc;
+    padding-inline-start: 1.5rem;
+  }
+  .prose-ar a {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}

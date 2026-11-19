@@ -6,7 +6,7 @@ import { CITATION_COLUMNS, type CitationRow, splitCitations } from './common';
 /** Columns for LinkRow; pair with `FROM chains c JOIN chain_links l … LEFT JOIN narrators n …`. */
 export const LINK_COLUMNS = `c.id AS chainId, h.ref_number AS hadithNumber, c.route_no AS routeNo, c.terminus,
   c.is_suspended AS isSuspended, c.citation_id AS chainCitationId, l.position, l.narrator_id AS narratorId,
-  l.mention_ar AS mentionAr, l.term_ar AS termAr, l.link_kind AS linkKind, n.slug, n.display_name_ar AS displayNameAr,
+  l.mention_ar AS mentionAr, l.mention_start AS mentionStart, l.mention_end AS mentionEnd, l.term_ar AS termAr, l.link_kind AS linkKind, n.slug, n.display_name_ar AS displayNameAr,
   n.honorific_ar AS honorificAr, n.role, n.tabaqa, n.birth_ah AS birthAh, n.death_ah AS deathAh,
   n.death_ah_max AS deathAhMax, n.dates_citation_id AS datesCitationId, n.summary_grade_ar AS summaryGradeAr,
   n.summary_grade_citation_id AS summaryGradeCitationId, n.review_status AS reviewStatus`;

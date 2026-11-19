@@ -77,6 +77,8 @@ export const HadithResponse = z.object({
   citationId: z.number().int(),
   reviewStatus: ReviewStatus,
   graph: IsnadGraph,
+  /** Narrator mentions in textAr ([start, end) offsets), each tied to its graph node. */
+  mentions: z.array(z.object({ start: z.number().int(), end: z.number().int(), nodeId: z.string() })),
   /** Every source cited in this response (graph.citations name them by slug). */
   sources: z.array(SourceInfo),
 });
