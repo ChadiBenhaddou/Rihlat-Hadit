@@ -30,3 +30,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # Arabic letters look "ambiguous" to ru
 [tool.mypy]
 strict = true
 packages = ["normalize"]
+
+[tool.ruff.lint.per-file-ignores]
+# One-off evaluation scripts whose output is recorded in docs/data-sources.md.
+"evaluate/*" = ["E501", "E701", "E702", "E741", "B905", "RUF005"]
