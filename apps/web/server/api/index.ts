@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { VersionResponse } from '@isnad/shared';
 import { coreDb, searchDb } from '../db';
 import { getBook, listBooks } from '../data/books';
+import { getCompare } from '../data/compare';
 import { getGroupGraph } from '../data/graph';
 import { getHadith } from '../data/hadith';
 import { getNarrator } from '../data/narrators';
@@ -69,6 +70,19 @@ reads.get('/narrators/:slug', async (c) => {
   if (!slug.success) return problem(c, 400, 'Bad Request');
   const body = await getNarrator(coreDb(c.env), slug.data, c.get('dataVersion'));
   return body ? c.json(body) : problem(c, 404, 'Not Found', 'no such narrator');
+});
+
+const Ref = z.string().regex(/^[a-z0-9-]{1,64}\/\d{1,5}$/).transform((v) => {
+  const [c, n] = v.split('/') as [string, string];
+  return [c, Number(n)] as [string, number];
+});
+
+reads.get('/compare', async (c) => {
+  const a = Ref.safeParse(c.req.query('a'));
+  const b = Ref.safeParse(c.req.query('b'));
+  if (!a.success || !b.success) return problem(c, 400, 'Bad Request', 'a and b are collection/number, e.g. bukhari/1');
+  const body = await getCompare(coreDb(c.env), a.data, b.data, c.get('dataVersion'));
+  return body ? c.json(body) : problem(c, 404, 'Not Found', 'one of the entries is not loaded');
 });
 
 const NetworkQuery = z.object({

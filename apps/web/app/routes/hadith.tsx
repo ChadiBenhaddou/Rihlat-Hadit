@@ -359,6 +359,15 @@ export default function HadithPage({ loaderData }: Route.ComponentProps) {
                         <Link className="link" to={`/bukhari/${n}?view=all`}>
                           {n}
                         </Link>
+                        {n !== hadith.number && (
+                          <Link
+                            className="ms-1 text-xs text-ink-muted underline"
+                            to={`/compare/${hadith.number}/${n}`}
+                            aria-label={`قارن ${hadith.number} مع ${n}`}
+                          >
+                            (قارن)
+                          </Link>
+                        )}
                       </span>
                     ))}
                   </p>

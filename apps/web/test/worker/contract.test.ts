@@ -3,6 +3,7 @@ import { env } from 'cloudflare:test';
 import { exports } from 'cloudflare:workers';
 import {
   BooksResponse,
+  CompareResponse,
   HadithResponse,
   IsnadGraph,
   NarratorProfile,
@@ -139,5 +140,16 @@ describe('narrator network', () => {
     expect(ab.numbers).toEqual([1]);
     expect(ba.numbers).toEqual([1]);
     expect(SharedResponse.parse(await (await get('/narrators/r11/shared/r14')).json()).numbers).toEqual([]);
+  });
+});
+
+describe('compare', () => {
+  it('diffs two matns on normalized words and returns both entries', async () => {
+    const body = CompareResponse.parse(await (await get('/compare?a=bukhari/1&b=bukhari/2')).json());
+    expect(body.a.number).toBe(1);
+    expect(body.b.number).toBe(2);
+    expect(body.diff.some((d) => d.op !== 'same')).toBe(true);
+    expect((await get('/compare?a=bukhari/1&b=x')).status).toBe(400);
+    expect((await get('/compare?a=bukhari/1&b=bukhari/999')).status).toBe(404);
   });
 });

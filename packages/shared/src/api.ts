@@ -185,3 +185,19 @@ export const SharedResponse = z.object({
   nextCursor: z.string().nullable(),
 });
 export type SharedResponse = z.infer<typeof SharedResponse>;
+
+export const DiffOpSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('same'), a: z.string(), b: z.string() }),
+  z.object({ op: z.literal('added'), b: z.string() }),
+  z.object({ op: z.literal('omitted'), a: z.string() }),
+  z.object({ op: z.literal('changed'), a: z.string(), b: z.string() }),
+]);
+
+export const CompareResponse = z.object({
+  dataVersion: z.string(),
+  a: HadithResponse,
+  b: HadithResponse,
+  /** Matn A → matn B, word by word on normalized words; original words kept. */
+  diff: z.array(DiffOpSchema),
+});
+export type CompareResponse = z.infer<typeof CompareResponse>;
