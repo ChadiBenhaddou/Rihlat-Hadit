@@ -1,6 +1,6 @@
 # Data sources: evaluation for Sahih al-Bukhari
 
-**Status:** awaiting approval (SPEC §8 step 2). Nothing has been loaded into D1.
+**Status:** approved by the project owner on 2026-11-19 (SPEC §8 step 2). Decisions are recorded at the end.
 **Evaluated:** 2026-11-19. Raw copies, with SHA-256 checksums and retrieval dates, are under `data/raw/<source>/<version>/` (git-ignored; they go to R2 under `raw/` once the account exists).
 
 ## Summary
@@ -92,3 +92,10 @@ Four decisions are yours, listed at the end. They concern provenance, the non-co
 2. **OpenITI's non-commercial licence.** Taking the numbering and chapter titles from OpenITI makes that layer **CC BY-NC-SA**: no commercial use, and derivative data must be shared under the same licence. Is the project non-commercial? If not, the chapter structure needs another source.
 3. **Gradings.** I will drop all of Hadith-KG's hadith and chain authenticity grades, as principle 2 requires. For narrators, its critics' statements are attributed to named critics but uncited. Show them with «مصدر ثانوي», or hold them back until reviewed? The unattributed one-line `rank` (it reads like Ibn Hajar's *Taqrib*, but the dataset never says so) I recommend **holding back** until a reviewer attributes it.
 4. **Which text to display.** Hadith-KG's text has full tashkeel but an unnamed source; the Tawq al-Najat text is identified but has no tashkeel. Principle 9 asks for the tashkeel of the source. Recommendation: display the Hadith-KG text, cited as «مصدر ثانوي», for the entries it covers, and the Tawq al-Najat text for the rest, marked as without tashkeel.
+
+## Decisions (approved 2026-11-19)
+
+1. **Hadith-KG is approved as a secondary source.** Every fact that rests on it is labelled «مصدر ثانوي» until a reviewer adds a primary citation.
+2. **The project is non-commercial.** OpenITI (CC BY-NC-SA 4.0) supplies the reference numbering and the كتاب/باب titles, with attribution. Data derived from it is shared under the same licence.
+3. **Gradings:** named critics' statements are shown, labelled «مصدر ثانوي». The unattributed one-line `rank` is stored but **not displayed** until a reviewer attributes it. All hadith and chain authenticity grades are dropped at load and never stored.
+4. **Display text:** the Hadith-KG text, with tashkeel, cited as «مصدر ثانوي». Reference numbers with no KG entry display the Tawq al-Najat text, marked as without tashkeel.
