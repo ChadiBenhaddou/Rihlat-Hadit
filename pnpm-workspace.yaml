@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+  - packages/*
+
+minimumReleaseAgeExclude:
+  - '@cloudflare/kv-asset-handler@0.5.1'
+  - '@cloudflare/vitest-plugin@1.8.5'
+  - '@cloudflare/workers-utils@0.55.0'
+  - '@react-router/dev@8.5.2'
+  - '@react-router/node@8.5.2'
+  - miniflare@5.20261118.0-beta
+  - react-router@8.5.2
+  - wrangler@4.165.0
+
+allowBuilds:
+  esbuild: true
+  workerd: true
