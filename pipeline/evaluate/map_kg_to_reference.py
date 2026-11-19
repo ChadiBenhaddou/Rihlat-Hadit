@@ -12,9 +12,7 @@ sys.path.insert(0, "pipeline")
 from normalize import normalize
 
 lines = (
-    open("data/raw/openiti-bukhari/2025.1.9/0256Bukhari.Sahih.Shamela0001681-ara1", encoding="utf-8")
-    .read()
-    .split("\n")
+    open("data/raw/openiti-bukhari/2025.1.9/0256Bukhari.Sahih.Shamela0001681-ara1", encoding="utf-8").read().split("\n")
 )
 ref = {}
 cur = None
