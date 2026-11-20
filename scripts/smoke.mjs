@@ -17,21 +17,28 @@ let target;
 for (let i = 0; i < 50 && !target; i++) { try { target = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page'); } catch { await sleep(200); } }
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener('open', r));
-let id = 0; const waiters = new Map(); const logs = [];
+let id = 0; const waiters = new Map(); const logs = []; const reqs = new Map();
 ws.addEventListener('message', (m) => {
   const d = JSON.parse(m.data);
   if (d.id && waiters.has(d.id)) { waiters.get(d.id)(d); waiters.delete(d.id); }
   if (d.method === 'Runtime.consoleAPICalled') logs.push(`console.${d.params.type}: ${d.params.args.map((a) => a.value ?? a.description ?? '').join(' ')}`.slice(0, 400));
   if (d.method === 'Runtime.exceptionThrown') logs.push(`EXCEPTION: ${d.params.exceptionDetails.exception?.description ?? d.params.exceptionDetails.text}`.slice(0, 600));
+  if (d.method === 'Network.requestWillBeSent') reqs.set(d.params.requestId, d.params.request.url);
+  if (d.method === 'Network.loadingFinished') reqs.delete(d.params.requestId);
+  if (d.method === 'Network.loadingFailed') { logs.push(`NETFAIL ${d.params.errorText} ${d.params.blockedReason ?? ''} ${reqs.get(d.params.requestId) ?? ''}`); reqs.delete(d.params.requestId); }
   if (d.method === 'Log.entryAdded') logs.push(`log.${d.params.entry.level}: ${d.params.entry.text}`.slice(0, 400));
 });
 const send = (method, params = {}) => new Promise((r) => { const i = ++id; waiters.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
-await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
+await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable'); await send('Network.enable');
 await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 700 });
 const media = [];
 if (opt.dark) media.push({ name: 'prefers-color-scheme', value: 'dark' });
 if (opt['reduced-motion']) media.push({ name: 'prefers-reduced-motion', value: 'reduce' });
 if (media.length) await send('Emulation.setEmulatedMedia', { features: media });
+// Record CSP violations and errors from the very start of page load.
+await send('Page.addScriptToEvaluateOnNewDocument', {
+  source: `window.__errs = []; addEventListener('securitypolicyviolation', (e) => __errs.push('CSP ' + e.violatedDirective + ' blocked ' + (e.blockedURI || 'inline') + ' sample=' + (e.sample || '').slice(0, 60))); addEventListener('error', (e) => __errs.push('ERR ' + (e.message || (e.target && (e.target.src || e.target.href)) || 'unknown')), true); addEventListener('unhandledrejection', (e) => __errs.push('REJ ' + String(e.reason)));`,
+});
 await send('Page.navigate', { url });
 await sleep(wait);
 for (const key of String(opt.key ?? '').split(',').filter(Boolean)) {
@@ -40,7 +47,9 @@ for (const key of String(opt.key ?? '').split(',').filter(Boolean)) {
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: code, code: key === 'Space' ? 'Space' : key });
   await sleep(900);
 }
+{ const r = await send('Runtime.evaluate', { expression: 'JSON.stringify(window.__errs || [])', returnByValue: true }); const errs = JSON.parse(r.result?.result?.value ?? '[]'); for (const e of errs) console.log('PAGE:', e); }
 if (opt.eval) { const r = await send('Runtime.evaluate', { expression: opt.eval, returnByValue: true, awaitPromise: true }); console.log('EVAL:', JSON.stringify(r.result?.result?.value ?? r.result)); }
 if (opt.shot) { const r = await send('Page.captureScreenshot', { format: 'png' }); writeFileSync(opt.shot, Buffer.from(r.result.data, 'base64')); console.log('SHOT:', opt.shot); }
 for (const l of logs) console.log(l);
+for (const u of reqs.values()) console.log('PENDING', u);
 ws.close(); chrome.kill();
