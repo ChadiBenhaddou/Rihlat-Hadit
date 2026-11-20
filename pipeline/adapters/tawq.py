@@ -80,7 +80,7 @@ def parse(path: Path) -> Reference:
             if not title and lines[i + 1].startswith("# "):
                 title = lines[i + 1][2:].strip()  # e.g. كتاب 19: the title sits on the next line
                 lines[i + 1] = ""
-            kitabs.append(Kitab(int(m.group(1)), title))
+            kitabs.append(Kitab(int(m.group(1)), _clean(title)))  # page markers can trail the title
             current = []
             in_body = True
             continue
@@ -99,7 +99,7 @@ def parse(path: Path) -> Reference:
                 j = i + 1
                 while not lines[j].startswith("### | "):
                     j += 1
-                kitabs.append(Kitab(1, _HEADING.match(lines[j]).group(1).strip()))  # type: ignore[union-attr]
+                kitabs.append(Kitab(1, _clean(_HEADING.match(lines[j]).group(1))))  # type: ignore[union-attr]
                 lines[j] = ""
                 in_body = True
                 current = []

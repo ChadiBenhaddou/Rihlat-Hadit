@@ -57,3 +57,12 @@ def test_real_file_coverage() -> None:
     first = r.entries[1].text
     assert first.startswith("حدثنا الحميدي عبد الله بن الزبير")
     assert "إنما الأعمال بالنيات" in first
+
+
+def test_page_markers_never_reach_titles() -> None:
+    r = parse(FIXTURE)
+    assert r.kitabs[1].title == "كتاب الثاني"
+    for k in r.kitabs:
+        assert "PageV" not in k.title and "ms" not in k.title
+        for b in k.babs:
+            assert "PageV" not in b.title
