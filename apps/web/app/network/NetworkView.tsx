@@ -31,6 +31,66 @@ function cssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888888';
 }
 
+/**
+ * Labels are drawn with Canvas 2D on an overlay, not by Sigma's WebGL glyph atlas:
+ * the atlas renders letters one by one and so cannot join Arabic script, while
+ * Canvas 2D shapes text like the rest of the page.
+ */
+function drawLabels(sigma: Sigma<NodeAttrs>, canvas: HTMLCanvasElement, pinned: (string | null)[]): void {
+  const g = sigma.getGraph();
+  const { width, height } = sigma.getDimensions();
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  const family = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim() || 'sans-serif';
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  const ink = cssVar('--color-ink');
+  const halo = cssVar('--color-bg');
+  const keep = new Set(pinned.filter((x): x is string => Boolean(x)));
+  const order = g
+    .nodes()
+    .sort(
+      (a, b) =>
+        Number(keep.has(b)) - Number(keep.has(a)) || g.getNodeAttribute(b, 'degree') - g.getNodeAttribute(a, 'degree'),
+    );
+  const taken: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (const id of order) {
+    const d = sigma.getNodeDisplayData(id);
+    if (!d) continue;
+    const r = sigma.scaleSize(d.size);
+    // Small nodes stay unlabelled unless pinned, as Sigma's own density rule did.
+    if (!keep.has(id) && r < 5) continue;
+    // Display data is in framed (normalized) coordinates; convert with the framed variant.
+    const p = sigma.framedGraphToViewport({ x: d.x, y: d.y });
+    if (p.x < -50 || p.y < -20 || p.x > width + 200 || p.y > height + 20) continue;
+    const pin = keep.has(id);
+    ctx.font = `${pin ? 600 : 400} ${pin ? 14 : 13}px ${family}`;
+    const label = g.getNodeAttribute(id, 'label');
+    const w = ctx.measureText(label).width;
+    // In RTL the label sits at the start side (left of the node), ending just before it.
+    const right = p.x - r - 4;
+    const box = { x1: right - w - 2, y1: p.y - 9, x2: right + 2, y2: p.y + 9 };
+    if (!pin && taken.some((b) => box.x1 < b.x2 && box.x2 > b.x1 && box.y1 < b.y2 && box.y2 > b.y1)) continue;
+    taken.push(box);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = halo;
+    ctx.strokeText(label, right, p.y);
+    ctx.fillStyle = ink;
+    ctx.fillText(label, right, p.y);
+  }
+}
+
 function tabaqaColor(t: number | null): string {
   if (t == null) return cssVar('--color-line');
   return cssVar(`--tabaqa-${Math.min(8, Math.max(1, Math.ceil((t * 8) / 12)))}`);
@@ -67,6 +127,8 @@ export default function NetworkView({
 }) {
   const { t, to, locale } = useI18n();
   const box = useRef<HTMLDivElement>(null);
+  const labelCanvas = useRef<HTMLCanvasElement>(null);
+  const pinnedRef = useRef<(string | null)[]>([center]);
   const graphRef = useRef<Graph<NodeAttrs> | null>(null);
   const sigmaRef = useRef<Sigma<NodeAttrs> | null>(null);
   const fa2Ref = useRef<FA2Layout | null>(null);
@@ -160,11 +222,13 @@ export default function NetworkView({
         merge(net);
         const instance = new Sigma(g, box.current, {
           settings: {
+            renderLabels: false, // drawn by drawLabels() on the Canvas 2D overlay
             renderEdgeLabels: false,
-            labelDensity: 0.25,
-            labelRenderedSizeThreshold: 7,
             zIndex: true,
           } as never,
+        });
+        instance.on('afterRender', () => {
+          if (labelCanvas.current) drawLabels(instance, labelCanvas.current, pinnedRef.current);
         });
         sigma = instance;
         sigmaRef.current = instance;
@@ -192,6 +256,7 @@ export default function NetworkView({
     const g = graphRef.current;
     const s = sigmaRef.current;
     if (!g || !s) return;
+    pinnedRef.current = [center, anchor, selected];
     const ink = cssVar('--color-accent');
     g.forEachNode((id, a) =>
       g.setNodeAttribute(id, 'color', id === selected || id === anchor ? ink : tabaqaColor(a.tabaqa)),
@@ -258,12 +323,15 @@ export default function NetworkView({
           {busy ? t('جارٍ التحميل…') : `${t('{n} راويًا', { n: size })}${capped ? t(' — بلغ الحد الأقصى (500)') : ''}`}
         </span>
       </div>
-      <div
-        ref={box}
-        className="network-canvas"
-        aria-label={t('شبكة شيوخ {name} وتلاميذه', { name: centerName })}
-        role="img"
-      />
+      <div className="relative">
+        <div
+          ref={box}
+          className="network-canvas"
+          aria-label={t('شبكة شيوخ {name} وتلاميذه', { name: centerName })}
+          role="img"
+        />
+        <canvas ref={labelCanvas} className="pointer-events-none absolute start-0 top-0" aria-hidden />
+      </div>
       <p className="text-xs text-ink-muted">
         {t(
           t(
