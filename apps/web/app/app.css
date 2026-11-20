@@ -554,3 +554,14 @@ body {
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 }
+
+@layer components {
+  .book-card {
+    transition: border-color 150ms, background-color 150ms;
+  }
+  .book-card:hover,
+  .book-card:focus-visible {
+    border-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+  }
+}

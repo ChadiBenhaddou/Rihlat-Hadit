@@ -265,4 +265,9 @@ export const EN: Record<string, string> = {
   'المقارنة بين روايتين: {a} و{b}': 'Comparing two narrations: {a} and {b}',
   'الفروق على الألفاظ بعد تجاهل التشكيل وصور الهمز، والنص المعروض كما في مصدره. زيادات: {a} · نقص: {o} · تغيّر: {c}':
     'Differences are in the words, ignoring vowel marks and hamza spellings; the text is shown as in its source. Additions: {a} · omissions: {o} · changes: {c}',
+  'ابدأ برحلة الحديث الأول': 'Start with the first hadith’s journey',
+  'كتب صحيح البخاري': 'The books of Sahih al-Bukhari',
+  '{b} كتابًا · {h} حديثًا محمّلًا · اختر كتابًا لترى أبوابه وأحاديثه': '{b} books · {h} hadith loaded · choose a book to see its chapters and hadith',
+  '{h} حديثًا': '{h} hadith',
+  'تعرف لفظًا أو رقمًا؟': 'Know a wording or a number?',
 };

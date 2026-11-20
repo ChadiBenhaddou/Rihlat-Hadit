@@ -38,7 +38,11 @@ export default function Bukhari({ loaderData }: Route.ComponentProps) {
                 {b.titleAr}
               </span>
               <span className="shrink-0 text-sm text-ink-muted tabular-nums">
-                {b.firstNumber != null ? `${b.firstNumber}–${b.lastNumber}` : ''}
+                {b.firstNumber != null && (
+                  <bdi dir="ltr">
+                    {b.firstNumber}–{b.lastNumber}
+                  </bdi>
+                )}
               </span>
             </Link>
           </li>
