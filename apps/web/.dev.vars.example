@@ -5,3 +5,5 @@ ACCESS_AUD=local-placeholder
 
 # Local development only: production builds ignore this (import.meta.env.DEV).
 DEV_ADMIN_EMAIL=admin@localhost
+# Local only: the always-pass TEST site key overrides the real one from wrangler.jsonc.
+TURNSTILE_SITE_KEY=1x00000000000000000000AA

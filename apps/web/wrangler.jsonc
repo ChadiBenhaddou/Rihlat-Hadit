@@ -11,23 +11,21 @@
   "limits": { "cpu_ms": 5000 },
   // Phase 0 bindings. MATN_INDEX (Vectorize), AI and the rate limiters are
   // added in the phase that first uses them (docs/adr/0008).
-  // database_id / id values are placeholders until `wrangler d1 create` /
-  // `wrangler kv namespace create` are run against the real account.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "isnad-core",
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_id": "1d480790-5c76-430d-8a1f-df2ee33522c1",
       "migrations_dir": "migrations"
     },
     {
       "binding": "SEARCH_DB",
       "database_name": "isnad-search",
-      "database_id": "00000000-0000-0000-0000-000000000002",
+      "database_id": "6a02aa10-4616-432b-9a15-0fff6cfd28b1",
       "migrations_dir": "migrations-search"
     }
   ],
-  "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000003" }],
+  "kv_namespaces": [{ "binding": "CONFIG", "id": "2c45150a0d8c4777a0956b797b7317f1" }],
   "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data" }],
   // Per-IP rate limits (SPEC §14): search 60/min, reports 5/min, other API calls 300/min.
   "ratelimits": [
@@ -37,9 +35,9 @@
   ],
   "vars": {
     "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
-    "SITE_URL": "http://localhost:5173",
-    // Cloudflare's documented always-pass TEST site key; replace per environment.
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
+    "SITE_URL": "https://isnad-journey.chaditechno7.workers.dev",
+    // Public Turnstile site key (the secret is set with `wrangler secret put TURNSTILE_SECRET`).
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAGKFPQxBkAElDdPP"
   },
   "env": {
     "preview": {
@@ -48,17 +46,17 @@
         {
           "binding": "DB",
           "database_name": "isnad-core-preview",
-          "database_id": "00000000-0000-0000-0000-000000000011",
+          "database_id": "65287f6c-afef-4a4b-8f1d-dd30c80f2b1d",
           "migrations_dir": "migrations"
         },
         {
           "binding": "SEARCH_DB",
           "database_name": "isnad-search-preview",
-          "database_id": "00000000-0000-0000-0000-000000000012",
+          "database_id": "994a81ae-ee3d-4dc2-9dd4-8dac02e6354d",
           "migrations_dir": "migrations-search"
         }
       ],
-      "kv_namespaces": [{ "binding": "CONFIG", "id": "00000000000000000000000000000013" }],
+      "kv_namespaces": [{ "binding": "CONFIG", "id": "babc6ffa31fd4c5a8885a2bb146cffef" }],
       "r2_buckets": [{ "binding": "DATA", "bucket_name": "isnad-data-preview" }],
       "ratelimits": [
         { "name": "SEARCH_LIMITER", "namespace_id": "2001", "simple": { "limit": 60, "period": 60 } },
@@ -67,8 +65,8 @@
       ],
       "vars": {
         "ACCESS_TEAM_DOMAIN": "<team>.cloudflareaccess.com",
-        "SITE_URL": "<https://preview…>",
-        "TURNSTILE_SITE_KEY": "<preview site key>"
+        "SITE_URL": "https://isnad-journey-preview.chaditechno7.workers.dev",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAGKFPQxBkAElDdPP"
       }
     }
   }
