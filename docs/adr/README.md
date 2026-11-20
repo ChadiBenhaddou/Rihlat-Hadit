@@ -19,3 +19,4 @@ append-only: supersede a record with a new one rather than rewriting it.
 | [0012](0012-loaders-instead-of-tanstack-query.md) | React Router loaders instead of TanStack Query and Zustand | Accepted |
 | [0013](0013-editorial-workflow.md) | Editorial workflow: proposals, separation of duties, Access verified twice | Accepted |
 | [0014](0014-english-ui.md) | English UI under /en, keyed by the Arabic strings | Accepted |
+| [0015](0015-free-plan-for-now.md) | Run on the Workers Free plan for now | Accepted |

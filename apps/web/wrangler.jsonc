@@ -7,8 +7,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "upload_source_maps": true,
-  // Cap runaway requests well below the 5-minute maximum (SPEC §4, §17).
-  "limits": { "cpu_ms": 5000 },
+  // SPEC §4/§17 sets "limits": { "cpu_ms": 5000 } on Workers Paid. The account is on
+  // the Free plan for now, which rejects CPU limits (docs/adr/0015); restore the line
+  // after upgrading.
   // Phase 0 bindings. MATN_INDEX (Vectorize), AI and the rate limiters are
   // added in the phase that first uses them (docs/adr/0008).
   "d1_databases": [
