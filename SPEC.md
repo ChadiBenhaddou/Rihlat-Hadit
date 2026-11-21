@@ -551,7 +551,7 @@ Layout by screen size:
 
 - **Desktop (1200 px and up):** three panes. In RTL the hadith pane sits at the start (right), the graph in the middle, and the narrator pane at the end (left).
 - **Tablet:** the graph plus one pane; the other opens as a drawer.
-- **Mobile:** the graph runs full width; the hadith text and the narrator card open as bottom sheets; journey controls stay fixed at the bottom.
+- **Mobile:** the hadith text comes first, so the reader reads the hadith and then its isnad; the graph follows full width below it; the narrator card opens as a bottom sheet; journey controls stay fixed at the bottom.
 
 Interactions:
 

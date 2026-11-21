@@ -282,7 +282,7 @@ body {
     padding: 0.75rem 1rem;
   }
 
-  /* Hadith page: three panes on desktop; graph full width below. */
+  /* Hadith page: three panes on desktop. Phones stack in source order: the hadith text first, then its isnad graph (SPEC §11). */
   .hadith-layout {
     display: grid;
     gap: 1rem;
@@ -301,12 +301,6 @@ body {
   .graph-pane {
     display: flex;
     flex-direction: column;
-  }
-  @media (max-width: 767px) {
-    /* Phones: the graph runs first and full width; the text follows (SPEC §11). */
-    .graph-pane {
-      order: -1;
-    }
   }
   .graph-canvas {
     height: min(72vh, 46rem);
