@@ -20,16 +20,17 @@ export const securityHeaders: MiddlewareHandler<{ Variables: SecurityVariables }
   const dev = import.meta.env.DEV;
   const csp = [
     "default-src 'self'",
-    // Turnstile (SPEC §14) is the only third-party script, loaded for the report form.
+    // Third-party scripts: Turnstile (SPEC §14) for the report form, and the
+    // cookieless Cloudflare Web Analytics beacon in production.
     dev
       ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' https://challenges.cloudflare.com`
-      : `script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com`,
+      : `script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com https://static.cloudflareinsights.com`,
     'frame-src https://challenges.cloudflare.com',
     "worker-src 'self' blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "img-src 'self' data:",
-    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self'",
+    dev ? "connect-src 'self' ws: wss:" : "connect-src 'self' https://cloudflareinsights.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

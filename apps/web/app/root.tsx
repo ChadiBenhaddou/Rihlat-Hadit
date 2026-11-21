@@ -18,6 +18,9 @@ export function loader({ context }: Route.LoaderArgs) {
   return { nonce: context.get(nonceContext), turnstileSiteKey: context.get(cloudflareContext).env.TURNSTILE_SITE_KEY };
 }
 
+/** Cloudflare Web Analytics (cookieless). The token is public: it ships in every page. */
+const CF_ANALYTICS_TOKEN = '8a8d09de595342aba7ef6ab1d8ade8fe';
+
 /** Preload the hadith font (SPEC §11): the matn is the page's main content. */
 export const links: Route.LinksFunction = () => [
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -86,6 +89,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration nonce={nonce} />
         <Scripts nonce={nonce} />
+        {import.meta.env.PROD && !admin && (
+          <script
+            defer
+            nonce={nonce}
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={JSON.stringify({ token: CF_ANALYTICS_TOKEN })}
+          />
+        )}
       </body>
     </html>
   );
